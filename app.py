@@ -1,7 +1,10 @@
 from flask import Flask
-from routes.signup import signup
+import mysql.connector
+from flask_cors import CORS
+from src.Auth.signup import signup
 
 app = Flask(__name__)
+CORS(app)
 app.register_blueprint(signup)
 
 @app.route('/')       
