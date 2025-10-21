@@ -24,20 +24,14 @@ cursor = db.cursor()
 def browse_salons():
     query = """ 
 SELECT b.bid, b.name, a.street, 
-a.city, a.state, a.country
+a.city, a.state, a.country, a.zip_code
  FROM business b JOIN addresses a ON b.aid = a.aid
  """
     cursor.execute(query)
     rows = cursor.fetchall()
     salons = [{"business_id": row[0], "name": row[1], 
                "street": row[2], "city": row[3], "state": row[4], 
-               "country": row[5]} for row in rows]
-    return jsonify(salons)
-
-
-
-
-
+                "country": row[5], "zip_code": row[6]} for row in rows]
 
 if __name__ == "__main__":
     app.run(debug=True)
