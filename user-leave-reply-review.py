@@ -20,13 +20,13 @@ db = mysql.connector.connect(
 
 cursor = db.cursor()
 #users can leave reviews
-@app.route("/api/user/leave-review", methods=["POST"])
-def leave_review():
+@app.route("/api/user/leave-reply-review", methods=["POST"])
+def leave_reply():
     data = request.get_json()
     user_id = data.get("uid")
     business_id = data.get("bid")
     employee_id = data.get("eid")
-    parent_id = None 
+    parent_id = data.get("parent_id")  
     comments = data.get("comments")
     query = """ 
     insert into reviews(uid,bid,eid,parent_id,comments)
@@ -34,7 +34,7 @@ def leave_review():
  """
     cursor.execute(query, (user_id,business_id,employee_id, parent_id, comments))
     db.commit()
-    return jsonify({"message": "Review submitted successfully."}), 201
+    return jsonify({"message": "Reply submitted successfully."}), 201
 
 
 
