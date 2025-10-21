@@ -1,5 +1,5 @@
 from flask import Flask
-import mysql.connector
+import os
 from flask_cors import CORS
 from src.Auth.signup import signup
 
