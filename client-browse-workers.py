@@ -25,7 +25,7 @@ def browse_workers():
     query = """ 
 SELECT e.eid,u.first_name, u.last_name, ex.expertise,
  b.name AS business_name, b.bid AS business_id, 
-a.street, a.city, a.state, a.country
+a.street, a.city, a.state, a.country, a.zip_code
  FROM employee e JOIN employee_expertise ee ON e.eid = ee.eid
  JOIN expertise ex ON ee.exp_id = ex.exp_id 
  JOIN users u ON e.uid = u.uid
@@ -38,7 +38,9 @@ a.street, a.city, a.state, a.country
                 "last_name": row[2], "expertise": row[3],
                 "business_name": row[4], "business_id": row[5],
                 "street": row[6], "city": row[7], "state": row[8],
-                "country": row[9]} for row in rows]
+                "country": row[9]
+, "zip_code": row[10]
+                } for row in rows]
     return jsonify(workers)
 
  
