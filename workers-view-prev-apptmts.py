@@ -19,7 +19,7 @@ db = mysql.connector.connect(
 )
 
 cursor = db.cursor()
-#clients can browse salons
+#workers can browse previous appointments
 @app.route("/api/workers/view-prev-appointments", methods=["GET"])
 def worker_view_appoints():
     query = """ 
