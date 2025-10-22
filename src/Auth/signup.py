@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from .auth_func import verify_email, verify_confirmPass, valid_email
+from .auth_func import  *
 
 signup = Blueprint("signup", __name__, url_prefix='')
 
@@ -27,12 +27,14 @@ def getClientSignUp():
                 "password": data['password'],
                 "confirmPassword": data['confirmPassword']
             })
-            
-        
+
+        uid = insert_Auth(data['firstName'],data['lastName'],data['email'],data['password'])
+        cid = insert_Customer(uid)   
         return jsonify({
-            "status": "success", 
-            "message": "Customer signup received",
-            "received_data": data
+            "status": "success",
+            "message": "Added new customer to database",
+            "User_ID": uid,
+            "Customer_ID":cid
         }), 200
     except Exception as e:
         print("error", e)
@@ -66,10 +68,13 @@ def getOwnerSignUp():
                 "confirmPassword": data['confirmPassword']
             })
 
+        uid = insert_Auth(data['firstName'],data['lastName'],data['email'],data['password'])
+        bid = insert_Owner(uid, data)
         return jsonify({
             "status": "success", 
-            "message": "Customer signup received",
-            "received_data": data
+            "message": "Added new business to database",
+            "User_ID": uid,
+            "Business_ID": bid
         }), 200
     except Exception as e:
         print("error", e)
@@ -102,11 +107,14 @@ def getWorkerSignUp():
                 "password": data['password'],
                 "confirmPassword": data['confirmPassword']
             })
-
+        
+        uid = insert_Auth(data['firstName'],data['lastName'],data['email'],data['password'])
+        eid = insert_Worker(uid, data)   
         return jsonify({
-            "status": "success", 
-            "message": "Customer signup received",
-            "received_data": data
+            "status": "success",
+            "message": "Added new employee to database",
+            "User_ID": uid,
+            "Employee_ID":eid
         }), 200
     except Exception as e:
         print("error", e)
