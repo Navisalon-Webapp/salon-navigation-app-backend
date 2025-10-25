@@ -10,6 +10,7 @@ from src.Workers.Workers_Browse import workers_browse
 from src.Reviews.Post_Reviews import post_reviews
 from src.Appointments.clients_cancel_appt import cancel_appts
 from src.Appointments.users_add_appt_notes import add_notes
+from src.Email_Subscriptions.clients_mnge_email_subs import manage_email_sub
 
 load_dotenv()
 
@@ -22,6 +23,7 @@ app.register_blueprint(workers_browse)
 app.register_blueprint(post_reviews)
 app.register_blueprint(cancel_appts)
 app.register_blueprint(add_notes)
+app.register_blueprint(manage_email_sub)
 
 app.config['SECRET_KEY']=os.getenv('SECRET_KEY')
 
