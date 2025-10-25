@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 import mysql.connector
 from mysql.connector import Error
+from .queries import query_user_info
 import hashlib
 import secrets
 import re
@@ -185,8 +186,9 @@ def get_uid(email):
 def get_user_info(uid):
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
-    cursor.execute("select users.uid as uid, email, first_name, last_name, name from salon_app.users left join salon_app.authenticate on users.uid=authenticate.uid left join salon_app.users_roles on users.uid=users_roles.uid left join salon_app.roles on users_roles.rid=roles.rid where users.uid = %s;",[uid])
+    cursor.execute(query_user_info,[uid])
     result = cursor.fetchone()
+    return result
 
 def get_role(uid):
     conn = get_db_connection()

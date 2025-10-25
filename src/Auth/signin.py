@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
+from flask_login import login_user, logout_user, login_required, current_user
 from .auth_func import  *
-from .User import *
+from .User import User
 
 signin = Blueprint("signin", __name__, url_prefix='')
 
@@ -36,13 +37,24 @@ def getSignin():
                 "message":"password is incorrect",
                 "password": data['password']
             })
+        
         uid = get_uid(data['email'])
-        user = load_user(uid, remember=True)
+        user_info = get_user_info(uid['uid'])
+        user = User(
+            id = user_info['uid'],
+            email = user_info['email'],
+            firstName = user_info['first_name'],
+            lastName = user_info['last_name'],
+            role = user_info['name']
+        )
+        login_user(user, remember=False)
+
         print("account verified")
         return jsonify({
             "status":"success",
             "message":"signed in",
-            "User_ID": uid['uid'],
+            "User_ID": current_user.id,
+            "role": current_user.role
         }), 200
     except Exception as e:
         print("error", e)

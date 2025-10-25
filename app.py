@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from flask_cors import CORS
 from src.Auth.signup import signup
 from src.Auth.signin import signin
+from src.Auth import init_auth
 
 load_dotenv()
 
@@ -13,6 +14,8 @@ app.register_blueprint(signup)
 app.register_blueprint(signin)
 
 app.config['SECRET_KEY']=os.getenv('SECRET_KEY')
+
+init_auth(app)
 
 @app.route('/')       
 def hello(): 
