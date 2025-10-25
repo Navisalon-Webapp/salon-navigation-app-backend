@@ -62,3 +62,11 @@ def getSignin():
             "status": "error",
             "message": str(e)
         }), 400
+    
+@signin.route('/logout', methods=['POST'])
+@login_required
+def logout():
+    logout_user()
+    return jsonify({
+        'message': 'Logout successful'
+    }), 200
