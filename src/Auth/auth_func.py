@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 import mysql.connector
 from mysql.connector import Error
+from .queries import query_user_info
 import hashlib
 import secrets
 import re
@@ -54,17 +55,19 @@ def insert_address(data):
     conn.close()
     return aid
 
+def new_salt():
+    salt = secrets.token_hex(16)
+    return salt
 
-def hash_pass(password):
-    """return (hash,salt) tuple
+def hash_pass(password,salt):
+    """return hash(password+salt)
 
     salt and hash password
     """
-    salt = secrets.token_hex(16)
     h = hashlib.new("SHA256")
     h.update(password.encode())
     h.update(salt.encode())
-    return (h.hexdigest(),salt)
+    return (h.hexdigest())
 
 def insert_Auth(firstName, lastName, email, password):
     """return uid
@@ -78,8 +81,9 @@ def insert_Auth(firstName, lastName, email, password):
         cursor = conn.cursor(dictionary=True)
         cursor.execute("INSERT INTO users (first_name, last_name) VALUES (%s, %s);",[firstName, lastName])
         uid = cursor.lastrowid
-        hashSalt = hash_pass(password)
-        param = [uid, email, hashSalt[0], hashSalt[1]]
+        salt = new_salt()
+        hash = hash_pass(password, salt)
+        param = [uid, email, hash, salt]
         cursor.execute("INSERT INTO authenticate (uid, email, pw_hash, salt) VALUES (%s, %s, %s, %s);", param)
         conn.commit()
         cursor.close()
@@ -156,3 +160,39 @@ def insert_Worker(uid, data):
     cursor.close()
     conn.close()
     return eid
+
+#sign in functions
+def get_Auth(email):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM authenticate WHERE email = %s", [email])
+    result = cursor.fetchone()
+    return result
+
+def verify_pass(email, password):
+    auth = get_Auth(email)
+    if(hash_pass(password,auth['salt']) != auth['pw_hash']):
+        return False
+    else:
+        return True
+    
+def get_uid(email):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT uid FROM authenticate WHERE email = %s", [email])
+    result = cursor.fetchone()
+    return result
+
+def get_user_info(uid):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute(query_user_info,[uid])
+    result = cursor.fetchone()
+    return result
+
+def get_role(uid):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT name FROM roles LEFT JOIN users_roles ON roles.rid=users_roles.rid WHERE uid = %s", [uid])
+    result = cursor.fetchone()
+    return result
