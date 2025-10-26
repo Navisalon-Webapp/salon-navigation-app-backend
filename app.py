@@ -6,6 +6,7 @@ from src.Auth.signup import signup
 from src.Auth.signin import signin
 from src.Auth import init_auth
 from src.Clients.Clients_Browse import client_browse
+from src.Workers.Workers_Browse import workers_browse
 
 load_dotenv()
 
@@ -14,6 +15,7 @@ CORS(app)
 app.register_blueprint(signup)
 app.register_blueprint(signin)
 app.register_blueprint(client_browse)
+app.register_blueprint(workers_browse)
 
 app.config['SECRET_KEY']=os.getenv('SECRET_KEY')
 
