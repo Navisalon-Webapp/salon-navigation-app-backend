@@ -71,7 +71,7 @@ def logout():
         'message': 'Logout successful'
     }), 200
 
-@signin.rout('/user-session', methods=['POST'])
+@signin.route('/user-session', methods=['POST'])
 @login_required
 def get_user_session():
     return jsonify({
