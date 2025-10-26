@@ -1,0 +1,2 @@
+query_eid = "select eid from salon_app.employee left join salon_app.users on employee.uid=users.uid where users.uid=%s;"
+query_appointments = "select * from salon_app.appointments where eid = %s and start_time > CURRENT_TIMESTAMP();"

@@ -121,7 +121,7 @@ def insert_Owner(uid, data):
     aid = insert_address(data)
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
-    cursor.execute("UPDATE business SET phone = %s WHERE uid = %s;", [data['phoneNumber'], uid])
+    cursor.execute("UPDATE users SET phone = %s WHERE uid = %s;", [data['phoneNumber'], uid])
     param = [uid, data['salonName'], aid]
     cursor.execute("INSERT INTO business (uid, name, aid) VALUES (%s, %s, %s);",param)
     bid = cursor.lastrowid
