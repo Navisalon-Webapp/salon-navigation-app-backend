@@ -70,3 +70,14 @@ def logout():
     return jsonify({
         'message': 'Logout successful'
     }), 200
+
+@signin.route('/user-session', methods=['POST'])
+@login_required
+def get_user_session():
+    return jsonify({
+        "User_ID": current_user.id,
+        "email": current_user.id,
+        "first name": current_user.firstName,
+        "last name": current_user.lastName,
+        "role": current_user.role
+    })
