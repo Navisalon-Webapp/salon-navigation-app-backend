@@ -15,7 +15,18 @@ from src.Email_Subscriptions.clients_mnge_email_subs import manage_email_sub
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
+
+CORS(
+    app,
+    supports_credentials=True,
+    resources={r"/*": {"origins": ["http://localhost:5173"]}}
+)
+
+app.config.update(
+    SESSION_COOKIE_SAMESITE="None",
+    SESSION_COOKIE_SECURE=False,  # set True in production with HTTPS
+)
+
 app.register_blueprint(signup)
 app.register_blueprint(signin)
 app.register_blueprint(client_browse)
