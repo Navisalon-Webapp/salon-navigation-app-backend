@@ -9,6 +9,7 @@ signin = Blueprint("signin", __name__, url_prefix='')
 def getSignin():
     try:
         data = request.get_json()
+        print(type(data))
         if(not data['email'] or not data['password']):
             print("sign in fields not fulfilled")
             return jsonify({
