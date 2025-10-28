@@ -8,7 +8,7 @@ from src.Worker.appointments import appointments
 from src.Owner.salondetails import salondetails
 from src.Auth import init_auth
 from src.Clients.Clients_Browse import client_browse
-from src.Workers.Workers_Browse import workers_browse
+from src.Worker.Workers_Browse import workers_browse
 from src.Reviews.Post_Reviews import post_reviews
 from src.Appointments.clients_cancel_appt import cancel_appts
 from src.Appointments.users_add_appt_notes import add_notes
