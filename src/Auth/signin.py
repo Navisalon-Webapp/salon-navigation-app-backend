@@ -16,28 +16,28 @@ def getSignin():
                 "status": "failure",
                 "message": "missing username or password",
                 "missing_value": "email" if not data['email'] else "password"
-            })
+            }), 400
         if(valid_email(data['email']) == False):
             print("email is not valid")
             return jsonify({
                 "status":"failure",
                 "message":"invalid email address",
                 "email": data['email']
-            })
+            }), 400
         if(verify_email(data['email']) == False):
             print("email does not exist")
             return jsonify({
                 "status":"failure",
                 "message":"no account associated with email",
                 "email": data['email']
-            })
+            }), 401
         if(verify_pass(data['email'], data['password']) == False):
             print("wrong password")
             return jsonify({
                 "status":"failure",
                 "message":"password is incorrect",
                 "password": data['password']
-            })
+            }), 401
         
         uid = get_uid(data['email'])
         user_info = get_user_info(uid['uid'])

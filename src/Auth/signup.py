@@ -13,20 +13,20 @@ def getClientSignUp():
                 "status": "failure",
                 "message": "invalid email address",
                 "invalid_email": data['email']
-            })
+            }), 400
         if(verify_email(data['email'])):
             return jsonify({
                 "status": "failure",
                 "message": "customer email already exists",
                 "existing_email": data['email']
-            })
+            }), 409
         if(verify_confirmPass(data['password'],data['confirmPassword'])==False):
             return jsonify({
                 "status": "failure",
                 "message": "passwords do not match",
                 "password": data['password'],
                 "confirmPassword": data['confirmPassword']
-            })
+            }), 400
 
         uid = insert_Auth(data['firstName'],data['lastName'],data['email'],data['password'])
         cid = insert_Customer(uid)   
@@ -53,20 +53,20 @@ def getBusinessSignUp():
                 "status": "failure",
                 "message": "invalid email address",
                 "invalid_email": data['email']
-            })
+            }), 400
         if(verify_email(data['email'])):
             return jsonify({
                 "status": "failure",
                 "message": "customer email already exists",
                 "existing_email": data['email']
-            })
+            }), 409
         if(verify_confirmPass(data['password'],data['confirmPassword'])==False):
             return jsonify({
                 "status": "failure",
                 "message": "passwords do not match",
                 "password": data['password'],
                 "confirmPassword": data['confirmPassword']
-            })
+            }), 400
 
         uid = insert_Auth(data['firstName'],data['lastName'],data['email'],data['password'])
         bid = insert_Owner(uid, data)
@@ -93,20 +93,20 @@ def getEmployeeSignUp():
                 "status": "failure",
                 "message": "invalid email address",
                 "invalid_email": data['email']
-            })
+            }), 400
         if(verify_email(data['email'])):
             return jsonify({
                 "status": "failure",
                 "message": "customer email already exists",
                 "existing_email": data['email']
-            })
+            }), 409
         if(verify_confirmPass(data['password'],data['confirmPassword'])==False):
             return jsonify({
                 "status": "failure",
                 "message": "passwords do not match",
                 "password": data['password'],
                 "confirmPassword": data['confirmPassword']
-            })
+            }), 400
         
         uid = insert_Auth(data['firstName'],data['lastName'],data['email'],data['password'])
         eid = insert_Worker(uid, data)   
