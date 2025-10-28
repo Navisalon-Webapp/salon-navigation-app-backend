@@ -47,8 +47,8 @@ def insert_address(data):
     """insert address in addresses table for business"""
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
-    param=[data['street'], data['city'], data['state'], data['country']]
-    cursor.execute("INSERT INTO addresses (street, city, state, country) VALUES (%s, %s, %s, %s);",param)
+    param=[data['salonAddress'], data['salonCity'], data['salonState'], data['salonCountry'], data['salonZipCode']]
+    cursor.execute("INSERT INTO addresses (street, city, state, country, zip_code) VALUES (%s, %s, %s, %s, %s);",param)
     aid = cursor.lastrowid
     conn.commit()
     cursor.close()
