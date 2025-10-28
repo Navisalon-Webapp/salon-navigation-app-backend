@@ -43,8 +43,8 @@ def getClientSignUp():
             "message": str(e)
         }), 400
 
-@signup.route('/owner/signup', methods=['POST'])
-def getOwnerSignUp():
+@signup.route('/business/signup', methods=['POST'])
+def getBusinessSignUp():
     try:
         data=request.get_json()
         # print(data)
@@ -83,8 +83,8 @@ def getOwnerSignUp():
             "message": str(e)
         }), 400
 
-@signup.route('/worker/signup', methods=['POST'])
-def getWorkerSignUp():
+@signup.route('/employee/signup', methods=['POST'])
+def getEmployeeSignUp():
     try:
         data=request.get_json()
         # print(data)
