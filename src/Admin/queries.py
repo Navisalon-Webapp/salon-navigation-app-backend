@@ -1,0 +1,1 @@
+update_verify_salon = "UPDATE business JOIN users ON business.uid=users.uid SET status=TRUE WHERE users.uid=%s"
