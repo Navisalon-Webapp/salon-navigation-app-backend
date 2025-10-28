@@ -16,6 +16,7 @@ from src.Email_Subscriptions.clients_mnge_email_subs import manage_email_sub
 from src.Auth.User import login_manager
 from src.Appointments.schedule_appt import schedule_appt
 from src.Worker.manage_availability import worker_avail
+from src.Salon.manage_services import manage_services
 
 load_dotenv()
 
@@ -50,6 +51,7 @@ app.register_blueprint(add_notes)
 app.register_blueprint(manage_email_sub)
 app.register_blueprint(schedule_appt)
 app.register_blueprint(worker_avail)
+app.register_blueprint(manage_services)
 
 app.config['SECRET_KEY']=os.getenv('SECRET_KEY')
 
