@@ -14,6 +14,7 @@ from src.Appointments.clients_cancel_appt import cancel_appts
 from src.Appointments.users_add_appt_notes import add_notes
 from src.Email_Subscriptions.clients_mnge_email_subs import manage_email_sub
 from src.Auth.User import login_manager
+from src.Appointments.schedule_appt import schedule_appt
 
 load_dotenv()
 
@@ -46,6 +47,7 @@ app.register_blueprint(post_reviews)
 app.register_blueprint(cancel_appts)
 app.register_blueprint(add_notes)
 app.register_blueprint(manage_email_sub)
+app.register_blueprint(schedule_appt)
 
 app.config['SECRET_KEY']=os.getenv('SECRET_KEY')
 
