@@ -122,3 +122,13 @@ def getEmployeeSignUp():
             "status": "error",
             "message": str(e)
         }), 400
+    
+@signup.route('/list-business', methods=['GET'])
+def business_list():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT uid, bid, name FROM business")
+    results = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return results
