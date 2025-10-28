@@ -1,53 +1,56 @@
+# src/Auth/User.py
 from flask_login import LoginManager, UserMixin
-from flask import jsonify
 from .auth_func import get_db_connection
-from.queries import query_user_info
+from .queries import query_user_info
 from mysql.connector import Error
 
 login_manager = LoginManager()
 
 class User(UserMixin):
-    def __init__(self, id, email, firstName, lastName, role):
-        self.id=id
-        self.email=email
-        self.firstName=firstName
-        self.lastName=lastName
-        self.role=role
+    def __init__(self, id: str, email: str, firstName: str, lastName: str, role: str):
+        self.id = str(id)
+        self.email = email
+        self.firstName = firstName
+        self.lastName = lastName
+        self.role = role
 
-    def get_id(self):
+    def get_id(self) -> str:
         return self.id
 
+
 @login_manager.user_loader
-def load_user(uid):
+def load_user(uid: str):
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         cursor.execute(query_user_info, [uid])
         user_info = cursor.fetchone()
-        conn.commit()
+
     except Error as e:
-        return jsonify({
-            "status": "failure",
-            "message": "databse error",
-            "error": e
-        })
+        print("user_loader DB error:", e)
+        return None
+
     finally:
-        if conn.is_connected():
-            cursor.close()
-            conn.close()
-    
-    if user_info:
-        return User(
-            uid=user_info['uid'],
-            email=user_info['email'],
-            firstName=user_info['first_name'],
-            lastName=user_info['last_name'],
-            role=user_info['name']
-        )
-    else:
-        return
-    
+        try:
+            if cursor:
+                cursor.close()
+            if conn and conn.is_connected():
+                conn.close()
+        except Exception:
+            pass
+
+    if not user_info:
+        return None
+
+    return User(
+        id=user_info["uid"],
+        email=user_info["email"],
+        firstName=user_info["first_name"],
+        lastName=user_info["last_name"],
+        role=user_info.get("role") or user_info.get("name", "customer")
+    )
+
+
 @login_manager.unauthorized_handler
 def unauthorized():
-    return jsonify({'error': 'Unauthorized access'}), 401
-
+    return ("Unauthorized", 401)
