@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from flask_cors import CORS
 from src.Auth.signup import signup
 from src.Auth.signin import signin
+from src.Worker.appointments import appointments
 from src.Auth import init_auth
 from src.Clients.Clients_Browse import client_browse
 from src.Workers.Workers_Browse import workers_browse
@@ -29,6 +30,7 @@ app.config.update(
 
 app.register_blueprint(signup)
 app.register_blueprint(signin)
+app.register_blueprint(appointments)
 app.register_blueprint(client_browse)
 app.register_blueprint(workers_browse)
 app.register_blueprint(post_reviews)
