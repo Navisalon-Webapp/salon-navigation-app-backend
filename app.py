@@ -13,10 +13,16 @@ from src.Reviews.Post_Reviews import post_reviews
 from src.Appointments.clients_cancel_appt import cancel_appts
 from src.Appointments.users_add_appt_notes import add_notes
 from src.Email_Subscriptions.clients_mnge_email_subs import manage_email_sub
+from src.Auth.User import login_manager
 
 load_dotenv()
 
 app = Flask(__name__)
+
+app.secret_key = "dev-change-me"
+login_manager.init_app(app)
+login_manager.session_protection = "strong"
+login_manager.login_view = "signin.getSignin"
 
 CORS(
     app,
@@ -25,8 +31,9 @@ CORS(
 )
 
 app.config.update(
-    SESSION_COOKIE_SAMESITE="None",
-    SESSION_COOKIE_SECURE=False,  # set True in production with HTTPS
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=False,
 )
 
 app.register_blueprint(signup)
