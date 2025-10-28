@@ -131,4 +131,4 @@ def business_list():
     results = cursor.fetchall()
     cursor.close()
     conn.close()
-    return results
+    return jsonify(results), 200
