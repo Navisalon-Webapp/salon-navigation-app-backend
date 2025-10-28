@@ -12,8 +12,13 @@ def verify_salon():
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         cursor.execute("UPDATE business JOIN users ON business.uid=users.uid SET status=TRUE WHERE users.uid=%s",[data['uid']])
+        return jsonify({
+            "status": "success",
+            "message": "approved salon",
+            "User_ID": data['uid']
+        }), 200
     except Error as e:
-        return 
+        return e
     
     
     
