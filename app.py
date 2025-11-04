@@ -1,12 +1,13 @@
 from flask import Flask
+from flask_mail import Mail, Message
 import os
 from dotenv import load_dotenv
 from flask_cors import CORS
+from src.extensions import mail, scheduler
 from src.Auth.signup import signup
 from src.Auth.signin import signin
 from src.Worker.appointments import appointments
 from src.Owner.salondetails import salondetails
-from src.Auth import init_auth
 from src.Clients.Clients_Browse import client_browse
 from src.Worker.Workers_Browse import workers_browse
 from src.Reviews.Post_Reviews import post_reviews
@@ -18,6 +19,7 @@ from src.Appointments.schedule_appt import schedule_appt
 from src.Worker.manage_availability import worker_avail
 from src.Salon.manage_services import manage_services
 from src.Salon.approve_workers import approve_workers
+from src.Notifications.notifications import notification
 
 load_dotenv()
 
@@ -39,6 +41,18 @@ app.config.update(
     SESSION_COOKIE_SAMESITE="Lax",
     SESSION_COOKIE_SECURE=False,
 )
+ 
+app.config['MAIL_SERVER']='smtp.gmail.com'
+app.config['MAIL_PORT'] = 465
+app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
+app.config['MAIL_USE_TLS'] = False
+app.config['MAIL_USE_SSL'] = True
+
+mail.init_app(app)
+
+scheduler.init_app(app)
+scheduler.start()
 
 app.register_blueprint(signup)
 app.register_blueprint(signin)
@@ -54,12 +68,9 @@ app.register_blueprint(schedule_appt)
 app.register_blueprint(worker_avail)
 app.register_blueprint(manage_services)
 app.register_blueprint(approve_workers)
+app.register_blueprint(notification)
 
 app.config['SECRET_KEY']=os.getenv('SECRET_KEY')
-
-init_auth(app)
-
-
 
 if __name__ == "__main__":
     app.run(debug=True)
