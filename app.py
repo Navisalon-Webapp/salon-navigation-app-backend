@@ -18,6 +18,7 @@ from src.Appointments.schedule_appt import schedule_appt
 from src.Worker.manage_availability import worker_avail
 from src.Salon.manage_services import manage_services
 from src.Salon.approve_workers import approve_workers
+from src.Admin.verifysalon import verifysalon
 
 load_dotenv()
 
@@ -54,6 +55,7 @@ app.register_blueprint(schedule_appt)
 app.register_blueprint(worker_avail)
 app.register_blueprint(manage_services)
 app.register_blueprint(approve_workers)
+app.register_blueprint(verifysalon)
 
 app.config['SECRET_KEY']=os.getenv('SECRET_KEY')
 
