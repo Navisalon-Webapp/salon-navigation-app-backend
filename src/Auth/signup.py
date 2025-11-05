@@ -29,7 +29,12 @@ def getClientSignUp():
             }), 400
 
         uid = insert_Auth(data['firstName'],data['lastName'],data['email'],data['password'])
-        cid = insert_Customer(uid)   
+        cid = insert_Customer(uid)
+        create_email_sub(cid)
+        # if not email_id:
+        #     print("could not insert into table")
+        # else:
+        #     print(email_id)
         return jsonify({
             "status": "success",
             "message": "Added new customer to database",
@@ -109,7 +114,7 @@ def getEmployeeSignUp():
             }), 400
         
         uid = insert_Auth(data['firstName'],data['lastName'],data['email'],data['password'])
-        eid = insert_Worker(uid, data)   
+        eid = insert_Worker(uid, data)
         return jsonify({
             "status": "success",
             "message": "Added new employee to database",
