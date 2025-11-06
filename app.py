@@ -1,9 +1,8 @@
 from flask import Flask
-from flask_mail import Mail, Message
 import os
 from dotenv import load_dotenv
 from flask_cors import CORS
-from src.extensions import mail, scheduler
+from src.extensions import mail
 from src.Auth.signup import signup
 from src.Auth.signin import signin
 from src.Worker.appointments import appointments
@@ -48,11 +47,9 @@ app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
 app.config['MAIL_USE_TLS'] = False
 app.config['MAIL_USE_SSL'] = True
+app.config['MAIL_SUPPRESS_SEND'] = False
 
 mail.init_app(app)
-
-scheduler.init_app(app)
-scheduler.start()
 
 app.register_blueprint(signup)
 app.register_blueprint(signin)
@@ -73,4 +70,10 @@ app.register_blueprint(notification)
 app.config['SECRET_KEY']=os.getenv('SECRET_KEY')
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.app_context().push()
+    from src.extensions import scheduler
+    with app.app_context():
+        if not scheduler.running:
+            scheduler.start()
+            print("Scheduler started successfully")
+    app.run(debug=True, use_reloader=False)

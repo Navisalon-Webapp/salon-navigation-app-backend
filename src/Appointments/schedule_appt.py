@@ -1,10 +1,23 @@
 # src/Appointments/create_appointment.py
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
-from datetime import datetime
+from flask_mail import Mail, Message
+from src.extensions import scheduler
+from src.Notifications.notification_func import email_appointment, create_message, check_appointment_subscription
+from datetime import datetime, timedelta
 from .app_func import  *
 
 schedule_appt = Blueprint("schedule_appt", __name__, url_prefix="/api")
+
+def send_reminder(msg, email):
+    from app import app
+    from flask import current_app
+    try:
+        app_context = current_app._get_current_object()
+    except RuntimeError:
+        app_context = app
+    with app_context.app_context():
+        email_appointment(current_app._get_current_object(),msg,email)
 
 # GET services from business
 @schedule_appt.route("/business/<int:bid>/services", methods=["GET"])
@@ -86,6 +99,20 @@ def create_appointment():
         new_aid = cur.lastrowid
         cur.close()
         conn.close()
+
+        if check_appointment_subscription(cid):
+            msg = create_message(new_aid)
+            email = current_user.email
+            run_time = start_dt - timedelta(days=1) 
+            if datetime.now() >= run_time:
+                run_time = datetime.now() + timedelta(seconds=10)
+            scheduler.add_job(
+                func=lambda:send_reminder(msg, email),
+                trigger='date',
+                run_date=run_time,
+                id=f'Appointment:{new_aid}:{cid}'
+            )
+
         return jsonify({"status": "success", "message": "appointment created", "appointment_id": new_aid}), 201
 
     except mysql.connector.Error as err:

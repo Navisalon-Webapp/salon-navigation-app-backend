@@ -1,5 +1,5 @@
 from flask_mail import Mail
-from flask_apscheduler import APScheduler
+from apscheduler.schedulers.background import BackgroundScheduler
 
 mail = Mail()
-scheduler = APScheduler()
+scheduler = BackgroundScheduler()
