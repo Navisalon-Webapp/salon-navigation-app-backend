@@ -19,6 +19,13 @@ from src.Worker.manage_availability import worker_avail
 from src.Salon.manage_services import manage_services
 from src.Salon.approve_workers import approve_workers
 from src.Notifications.notifications import notification
+from src.Admin.verifysalon import verifysalon
+from src.LoyaltyProgram.create_loyalty_programs import loyalty_prog
+from src.Promotions.create_promos import promotions
+from src.Clients.Clients_Review.Clients_Review_Workers import review_workers
+
+
+
 
 load_dotenv()
 
@@ -66,6 +73,11 @@ app.register_blueprint(worker_avail)
 app.register_blueprint(manage_services)
 app.register_blueprint(approve_workers)
 app.register_blueprint(notification)
+app.register_blueprint(verifysalon)
+app.register_blueprint(loyalty_prog)
+app.register_blueprint(promotions)
+app.register_blueprint(review_workers)
+
 
 app.config['SECRET_KEY']=os.getenv('SECRET_KEY')
 
