@@ -87,4 +87,4 @@ if __name__ == "__main__":
         if not scheduler.running:
             scheduler.start()
             print("Scheduler started successfully")
-    app.run(debug=True, use_reloader=False)
+    app.run(debug=True)
