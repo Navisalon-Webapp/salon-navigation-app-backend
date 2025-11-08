@@ -26,3 +26,8 @@ def get_cid_for_uid(conn, uid):
     row = cur.fetchone()
     cur.close()
     return row['cid'] if row else None
+
+def get_cid_for_aid(cur, aid):
+    cur.execute("SELECT cid FROM appointments WHERE aid = %s", (aid,))
+    row = cur.fetchone()
+    return row[0] if row else None

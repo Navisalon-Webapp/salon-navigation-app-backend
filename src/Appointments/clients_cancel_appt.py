@@ -1,6 +1,8 @@
 from flask import request, jsonify, Blueprint
 from flask_cors import CORS
 import mysql.connector
+from src.extensions import scheduler
+from src.Appointments.app_func import get_cid_for_aid
 from dotenv import load_dotenv
 import os
 
@@ -31,12 +33,16 @@ def cancel_appt():
         return jsonify({"error": "Appointment ID (aid) is required"}), 400
 
     try:
+        cid=get_cid_for_aid(cursor, appointment_id)
         query = "DELETE FROM appointments WHERE aid = %s"
         cursor.execute(query, (appointment_id,))
         db.commit()
 
         if cursor.rowcount == 0:
             return jsonify({"message": "No appointment found with that ID."}), 404
+        
+        if scheduler.get_job(f"Appointment:{appointment_id}:{cid}"):
+            scheduler.remove_job(f"Appointment:{appointment_id}:{cid}")
 
         return jsonify({"message": "Appointment cancelled successfully."}), 200
 
