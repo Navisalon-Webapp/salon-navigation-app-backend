@@ -3,6 +3,7 @@ from flask_cors import CORS
 import mysql.connector
 from flask_login import current_user, login_required
 from dotenv import load_dotenv
+from datetime import datetime, timedelta
 from src.extensions import scheduler
 from src.Notifications.notification_func import *
 import os
@@ -29,7 +30,7 @@ def get_db():
         return None
 
 
-def send_reminder(msg, email):
+def send_promo(msg, email):
     from app import app
     from flask import current_app
     try:
@@ -100,7 +101,12 @@ def create_promos():
         for c in customers:
             if check_promotion_subscription(c['cid']):
                 send_to.append(c['email'])
-        scheduler.add_job()
+        scheduler.add_job(
+            func=lambda:send_promo(msg,send_to),
+            trigger='date',
+            run_date=datetime.now()+timedelta(seconds=30),
+            id=f"Promotion:{promo_id}:{row[0]}"
+        )
 
         return jsonify({"message": "Promotion created successfully.", "promotion_id":promo_id}), 201
     except mysql.connector.Error as err:
