@@ -91,7 +91,7 @@ def get_appointment_details(aid):
         if not conn.is_connected():
             conn.close
     
-def create_message(aid) -> Message:
+def create_appt_message(aid) -> Message:
 
     details = get_appointment_details(aid)
     eid = details['eid']
@@ -120,10 +120,23 @@ def create_message(aid) -> Message:
     msg.body = message
     return msg
 
+def create_promo_message(title, description, business):
+    msg = Message(subject=title, body=description)
+    msg.subject = msg.subject + f"at {business}"
+    return msg
+
+
 def email_appointment(app ,msg: Message, to):
     with app.app_context():
         msg.sender = os.getenv('MAIL_USERNAME')
         msg.recipients = [to]
+        mail.send(msg)
+        print(f"Sent email to {to} at {datetime.now()}")
+
+def email_promotion(app, msg:Message, to):
+    with app.app_context():
+        msg.sender = os.getenv('MAIL_USERNAME')
+        msg.recipients = to
         mail.send(msg)
         print(f"Sent email to {to} at {datetime.now()}")
 
@@ -139,6 +152,38 @@ def check_appointment_subscription(cid) -> bool:
         cursor.close()
         conn.close()
         return results['appointment']
+    except Exception as e:
+        conn.close()
+        raise e
+    
+def check_promotion_subscription(cid) -> bool:
+    conn = get_db_connection()
+    if conn is None:
+        raise ValueError("Database connection failed")
+    
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(query_email_subscriptions, [cid])
+        results = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        return results['promotion']
+    except Exception as e:
+        conn.close()
+        raise e
+    
+def get_business_customers(bid):
+    conn = get_db_connection()
+    if conn is None:
+        raise ValueError("Database connection failed")
+    
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(query_customers_business, [bid])
+        customers = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return customers
     except Exception as e:
         conn.close()
         raise e
