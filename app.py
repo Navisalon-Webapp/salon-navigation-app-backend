@@ -7,6 +7,8 @@ from src.Auth.signup import signup
 from src.Auth.signin import signin
 from src.Worker.appointments import appointments
 from src.Owner.salondetails import salondetails
+from src.Owner.manage_products import manage_products
+from src.Auth import init_auth
 from src.Clients.Clients_Browse import client_browse
 from src.Worker.Workers_Browse import workers_browse
 from src.Reviews.Post_Reviews import post_reviews
@@ -63,6 +65,7 @@ app.register_blueprint(signup)
 app.register_blueprint(signin)
 app.register_blueprint(appointments)
 app.register_blueprint(salondetails)
+app.register_blueprint(manage_products)
 app.register_blueprint(client_browse)
 app.register_blueprint(workers_browse)
 app.register_blueprint(post_reviews)
