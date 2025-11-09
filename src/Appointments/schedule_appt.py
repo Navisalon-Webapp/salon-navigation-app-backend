@@ -3,7 +3,7 @@ from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 from flask_mail import Mail, Message
 from src.extensions import scheduler
-from src.Notifications.notification_func import email_appointment, create_message, check_appointment_subscription
+from src.Notifications.notification_func import email_appointment, create_appt_message, check_appointment_subscription
 from datetime import datetime, timedelta
 from .app_func import  *
 
@@ -101,7 +101,7 @@ def create_appointment():
         conn.close()
 
         if check_appointment_subscription(cid):
-            msg = create_message(new_aid)
+            msg = create_appt_message(new_aid)
             email = current_user.email
             run_time = start_dt - timedelta(days=1) 
             if datetime.now() >= run_time:
