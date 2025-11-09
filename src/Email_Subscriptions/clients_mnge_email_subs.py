@@ -40,9 +40,9 @@ def manage_promotion_subscription():
         db = get_db_connection()
         cursor = db.cursor()
 
-        query = """
+        query = f"""
         update email_subscription
-        set promotion = false
+        set promotion = {promotion}
         where cid = %s;
         """
         cursor.execute(query, (cid,))
@@ -79,9 +79,9 @@ def manage_appt_reminder_subscription():
         db = get_db_connection()
         cursor = db.cursor()
 
-        query = """
+        query = f"""
         update email_subscription
-        set appointment = false
+        set appointment = {appt}
         where cid = %s;
         """
         cursor.execute(query, (cid,))
