@@ -1,9 +1,5 @@
 import os
 from dotenv import load_dotenv
-import mysql.connector
-from mysql.connector import Error
-from flask_login import current_user
-from flask import current_app
 from flask_mail import Message
 from src.extensions import mail
 from .queries import *
@@ -11,21 +7,6 @@ from datetime import datetime
 from helper.utils import *
 
 load_dotenv()
-    
-def get_upcoming_appointments():
-    """return all upcoming appointments for all customers"""
-    conn = get_db_connection()
-    if conn is None:
-        raise ValueError("Database connection failed")
-    
-    try:
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute(query_upcoming_appointments)
-        results = cursor.fetchall()
-        return results
-    except Exception as e:
-        conn.close()
-        raise e
         
 def create_appt_message(aid) -> Message:
 
@@ -61,14 +42,6 @@ def create_promo_message(title, description, business):
     msg.subject = msg.subject + f"at {business}"
     return msg
 
-
-# def email_appointment(app ,msg: Message, to):
-#     with app.app_context():
-#         msg.sender = os.getenv('MAIL_USERNAME')
-#         msg.recipients = [to]
-#         mail.send(msg)
-#         print(f"Sent email to {to} at {datetime.now()}")
-
 def email_message(app, msg:Message, to):
     with app.app_context():
         msg.sender = os.getenv('MAIL_USERNAME')
@@ -77,6 +50,10 @@ def email_message(app, msg:Message, to):
         print(f"Sent email to {to} at {datetime.now()}")
 
 def check_appointment_subscription(cid) -> bool:
+    """Return true if user wants to recieve appointment emails
+    
+    otherwise return
+    """
     conn = get_db_connection()
     if conn is None:
         raise ValueError("Database connection failed")
@@ -93,6 +70,10 @@ def check_appointment_subscription(cid) -> bool:
         raise e
     
 def check_promotion_subscription(cid) -> bool:
+    """Return true if user wants to recieve promotion emails
+    
+    otherwise return
+    """
     conn = get_db_connection()
     if conn is None:
         raise ValueError("Database connection failed")
@@ -109,6 +90,7 @@ def check_promotion_subscription(cid) -> bool:
         raise e
     
 def get_business_customers(bid):
+    """Return all customers that have made appointments at a business"""
     conn = get_db_connection()
     if conn is None:
         raise ValueError("Database connection failed")
