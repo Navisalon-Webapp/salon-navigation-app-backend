@@ -1,6 +1,8 @@
 from flask import Blueprint, request, jsonify
 from src.Notifications.notification_func import *
+from helper.utils import *
 from src.extensions import mail
+from flask_mail import Message
 from dotenv import load_dotenv
 from src.extensions import scheduler
 import os
@@ -8,16 +10,6 @@ import os
 load_dotenv()
 
 notification = Blueprint("notification",__name__,url_prefix='/notification')
-
-@notification.route('/upcoming-appointments',methods=['GET'])
-def get_appointments():
-    return jsonify(get_upcoming_appointments())
-
-@notification.route('/appointment',methods=['GET'])
-def get_appointment():
-    data = request.get_json()
-    aid = data['aid']
-    return jsonify(get_appointment_details(aid))
 
 @notification.route('/get-jobs', methods=['GET'])
 def get_jobs():

@@ -7,7 +7,7 @@ signup = Blueprint("signup", __name__, url_prefix='')
 def getClientSignUp():
     try:
         data=request.get_json()
-        # print(data)
+
         if(valid_email(data['email'])==False):
             return jsonify({
                 "status": "failure",
@@ -29,12 +29,15 @@ def getClientSignUp():
             }), 400
 
         uid = insert_Auth(data['firstName'],data['lastName'],data['email'],data['password'])
+        if not isinstance(uid, int):
+            raise Exception("Failed to create user account")
+        
         cid = insert_Customer(uid)
+        if not isinstance(cid, int):
+            raise Exception("Failed to create customer record")
+
         create_email_sub(cid)
-        # if not email_id:
-        #     print("could not insert into table")
-        # else:
-        #     print(email_id)
+
         return jsonify({
             "status": "success",
             "message": "Added new customer to database",

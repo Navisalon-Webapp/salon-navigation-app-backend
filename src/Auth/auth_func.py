@@ -76,21 +76,34 @@ def insert_Auth(firstName, lastName, email, password):
 
     insert email, password hash, and salt into authenticate table
     """
+    conn = None
+    cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
+
         cursor.execute("INSERT INTO users (first_name, last_name) VALUES (%s, %s);",[firstName, lastName])
         uid = cursor.lastrowid
+
         salt = new_salt()
         hash = hash_pass(password, salt)
+
         param = [uid, email, hash, salt]
         cursor.execute("INSERT INTO authenticate (uid, email, pw_hash, salt) VALUES (%s, %s, %s, %s);", param)
+
         conn.commit()
         cursor.close()
         conn.close()
         return uid
-    except Exception as e:
-        return str(e)
+    except Error as e:
+        if conn:
+            conn.rollback()
+        raise Exception(f"Database error: {str(e)}")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
     
 def insert_Customer(uid):
     """return cid

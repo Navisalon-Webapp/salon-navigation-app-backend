@@ -2,14 +2,15 @@
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 from flask_mail import Mail, Message
-from src.extensions import scheduler
-from src.Notifications.notification_func import email_appointment, create_appt_message, check_appointment_subscription
+from src.extensions import scheduler, mail
+from src.Notifications.notification_func import *
+from helper.utils import *
 from datetime import datetime, timedelta
 from .app_func import  *
 
 schedule_appt = Blueprint("schedule_appt", __name__, url_prefix="/api")
 
-def send_reminder(msg, email):
+def send_reminder(msg : Message, email):
     from app import app
     from flask import current_app
     try:
@@ -17,7 +18,7 @@ def send_reminder(msg, email):
     except RuntimeError:
         app_context = app
     with app_context.app_context():
-        email_appointment(current_app._get_current_object(),msg,email)
+        email_message(current_app._get_current_object(),msg,[email])
 
 # GET services from business
 @schedule_appt.route("/business/<int:bid>/services", methods=["GET"])
@@ -125,3 +126,90 @@ def create_appointment():
         cur.close()
         conn.close()
         return jsonify({"status": "failure", "message": f"error: {e}"}), 500
+    
+@schedule_appt.route('/employee/reschedule', methods=['PUT'])
+@login_required
+def employee_reschedule():
+    uid =  current_user.id
+    if not check_role(uid) == "employee":
+        return jsonify({
+            "status":"failure",
+            "message":"current user not an employee"
+        }), 403
+    eid = get_curr_eid()
+    
+    data = request.get_json()
+    aid = data['aid']
+    new_time_raw = data['new_time']
+
+    if not aid or not new_time_raw:
+        return jsonify({
+            "status":"failure",
+            "message":"aid and new_time_raw required"
+        }), 400
+
+    appt_details = get_appointment_details(aid)
+    if not appt_details['eid'] == eid:
+        return jsonify({
+            "status":"failure",
+            "message":"employee assigned to employee does not match current user"
+        }), 403
+
+    try:
+        if "T" in new_time_raw and new_time_raw.count(":") >= 1:
+            start_time = datetime.fromisoformat(new_time_raw)
+        else:
+            start_time = datetime.strptime(new_time_raw, "%Y-%m-%d %H:%M:%S")
+    except Exception as e:
+        return jsonify({"status": "failure", "message": f"invalid start_time: {e}"}), 400
+    
+    if start_time <= appt_details['start_time'] or start_time <= datetime.now():
+        return jsonify({"status": "failure", "message": f"invalid start_time: {e}"}), 400
+    
+    conn = get_db_connection()
+    if conn is None:
+        raise ValueError("Database connection failed")
+    cursor = None
+    
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("select durationMin from services where sid = %s", [appt_details['sid']])
+        row=cursor.fetchone()
+        duration=row['durationMin']
+
+        end_time = start_time + timedelta(duration)
+
+        start_str=start_time.strftime("%Y-%m-%d %H:%M:%S")
+        end_str=end_time.strftime("%Y-%m-%d %H:%M:%S")
+
+        cursor.execute("update appointments set start_time=%s, expected_end_time=%s where aid=%s",[start_str, end_str, aid])
+
+        c_name = get_name(appt_details['c_uid'])
+        c_email = get_email(appt_details['c_uid'])
+        e_name = get_name(current_user.id)
+        e_email = get_email(current_user.id)
+
+        if check_appointment_subscription(appt_details['cid']):
+            message = f"Your appointment with {e_name[0]} {e_name[1]} has been rescheduled to {'{:d}:{:02d}'.format(start_time.hour, start_time.minute)}"
+            msg = Message(subject=f"Hello {c_name[0]} {c_name[1]}", body=message)
+            send_reminder(msg, c_email)
+
+        message = f"Your appointment with {c_name[0]} {c_name[1]} has been rescheduled to {'{:d}:{:02d}'.format(start_time.hour, start_time.minute)}"
+        msg = Message(subject="Appointment Rescheduled", body=message)
+        send_reminder(msg, e_email)
+
+        return jsonify({
+            "status":"success",
+            "message":"Appointment has been rescheduled"
+        }), 200
+    except mysql.connector.Error as e:
+        conn.rollback()
+        return jsonify({"status": "failure", "message": f"db error: {e}"}), 500
+    except Exception as e:
+        conn.close()
+        raise e
+    finally:
+        if cursor:
+            conn.close()
+        if conn:
+            conn.close()

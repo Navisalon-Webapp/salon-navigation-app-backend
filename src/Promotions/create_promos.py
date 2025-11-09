@@ -38,7 +38,7 @@ def send_promo(msg, email):
     except RuntimeError:
         app_context = app
     with app_context.app_context():
-        email_promotion(current_app._get_current_object(),msg,email)
+        email_message(current_app._get_current_object(),msg,email)
 
 #Owners can create promotions
 @promotions.route("/api/owner/create-promotion", methods=["POST"])
