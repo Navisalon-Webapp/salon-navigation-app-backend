@@ -196,3 +196,20 @@ def get_role(uid):
     cursor.execute("SELECT name FROM roles LEFT JOIN users_roles ON roles.rid=users_roles.rid WHERE uid = %s", [uid])
     result = cursor.fetchone()
     return result
+
+def create_email_sub(cid):
+    if not cid:
+        print ("no cid")
+        return
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("INSERT INTO email_subscription (cid, promotion, appointment) VALUES (%s, true, true)",[cid])
+    id = cursor.lastrowid
+    if not id:
+        print("could not insert email sub")
+    else:
+        print(id)
+    conn.commit()
+    cursor.close()
+    conn.close()
+    # return id

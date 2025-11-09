@@ -2,6 +2,7 @@ from flask import Flask
 import os
 from dotenv import load_dotenv
 from flask_cors import CORS
+from src.extensions import mail
 from src.Auth.signup import signup
 from src.Auth.signin import signin
 from src.Worker.appointments import appointments
@@ -19,6 +20,15 @@ from src.Appointments.schedule_appt import schedule_appt
 from src.Worker.manage_availability import worker_avail
 from src.Salon.manage_services import manage_services
 from src.Salon.approve_workers import approve_workers
+from src.Notifications.notifications import notification
+from src.Admin.verifysalon import verifysalon
+from src.LoyaltyProgram.create_loyalty_programs import loyalty_prog
+from src.Promotions.create_promos import promotions
+from src.Clients.Clients_Review.Clients_Review_Workers import review_workers
+from src.ViewVisitHistory.owner_view_visit_history import visit_hist
+
+
+
 
 load_dotenv()
 
@@ -40,6 +50,16 @@ app.config.update(
     SESSION_COOKIE_SAMESITE="Lax",
     SESSION_COOKIE_SECURE=False,
 )
+ 
+app.config['MAIL_SERVER']='smtp.gmail.com'
+app.config['MAIL_PORT'] = 465
+app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
+app.config['MAIL_USE_TLS'] = False
+app.config['MAIL_USE_SSL'] = True
+app.config['MAIL_SUPPRESS_SEND'] = False
+
+mail.init_app(app)
 
 app.register_blueprint(signup)
 app.register_blueprint(signin)
@@ -56,12 +76,20 @@ app.register_blueprint(schedule_appt)
 app.register_blueprint(worker_avail)
 app.register_blueprint(manage_services)
 app.register_blueprint(approve_workers)
+app.register_blueprint(notification)
+app.register_blueprint(verifysalon)
+app.register_blueprint(loyalty_prog)
+app.register_blueprint(promotions)
+app.register_blueprint(review_workers)
+app.register_blueprint(visit_hist)
 
 app.config['SECRET_KEY']=os.getenv('SECRET_KEY')
 
-init_auth(app)
-
-
-
 if __name__ == "__main__":
+    app.app_context().push()
+    from src.extensions import scheduler
+    with app.app_context():
+        if not scheduler.running:
+            scheduler.start()
+            print("Scheduler started successfully")
     app.run(debug=True)
