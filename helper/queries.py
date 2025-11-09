@@ -26,8 +26,8 @@ b.uid as b_uid, b.bid, b.name as salon, ba.street, ba.city, ba.state, ba.country
 s.sid, s.name as service, s.durationMin,
 a.aid, a.start_time, a.expected_end_time
 from salon_app.appointments as a
-join salon_app.email_subscription as email on a.cid=email.cid
 join salon_app.customers c on a.cid=c.cid
+join salon_app.email_subscription as email on c.uid=email.uid
 join salon_app.users cu on c.uid=cu.uid
 join salon_app.authenticate auth on cu.uid=auth.uid
 left join salon_app.employee e on a.eid=e.eid

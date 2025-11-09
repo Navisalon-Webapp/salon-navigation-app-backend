@@ -210,18 +210,14 @@ def get_role(uid):
     result = cursor.fetchone()
     return result
 
-def create_email_sub(cid):
-    if not cid:
-        print ("no cid")
+def create_email_sub(uid):
+    if not uid:
+        print ("no uid")
         return
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
-    cursor.execute("INSERT INTO email_subscription (cid, promotion, appointment) VALUES (%s, true, true)",[cid])
+    cursor.execute("INSERT INTO email_subscription (uid, promotion, appointment) VALUES (%s, true, true)",[uid])
     id = cursor.lastrowid
-    if not id:
-        print("could not insert email sub")
-    else:
-        print(id)
     conn.commit()
     cursor.close()
     conn.close()

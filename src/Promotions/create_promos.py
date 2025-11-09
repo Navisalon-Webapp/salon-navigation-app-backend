@@ -99,7 +99,7 @@ def create_promos():
         customers = get_business_customers(row[0])
         send_to = []
         for c in customers:
-            if check_promotion_subscription(c['cid']):
+            if check_promotion_subscription(c['uid']):
                 send_to.append(c['email'])
         scheduler.add_job(
             func=lambda:send_promo(msg,send_to),

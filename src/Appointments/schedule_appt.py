@@ -101,7 +101,7 @@ def create_appointment():
         cur.close()
         conn.close()
 
-        if check_appointment_subscription(cid):
+        if check_appointment_subscription(current_user.id):
             msg = create_appt_message(new_aid)
             email = current_user.email
             run_time = start_dt - timedelta(days=1) 
@@ -189,14 +189,15 @@ def employee_reschedule():
         e_name = get_name(current_user.id)
         e_email = get_email(current_user.id)
 
-        if check_appointment_subscription(appt_details['cid']):
+        if check_appointment_subscription(appt_details['c_uid']):
             message = f"Your appointment with {e_name[0]} {e_name[1]} has been rescheduled to {'{:d}:{:02d}'.format(start_time.hour, start_time.minute)}"
             msg = Message(subject=f"Hello {c_name[0]} {c_name[1]}", body=message)
             send_reminder(msg, c_email)
-
-        message = f"Your appointment with {c_name[0]} {c_name[1]} has been rescheduled to {'{:d}:{:02d}'.format(start_time.hour, start_time.minute)}"
-        msg = Message(subject="Appointment Rescheduled", body=message)
-        send_reminder(msg, e_email)
+        
+        if check_appointment_subscription(current_user.id):
+            message = f"Your appointment with {c_name[0]} {c_name[1]} has been rescheduled to {'{:d}:{:02d}'.format(start_time.hour, start_time.minute)}"
+            msg = Message(subject="Appointment Rescheduled", body=message)
+            send_reminder(msg, e_email)
 
         return jsonify({
             "status":"success",
