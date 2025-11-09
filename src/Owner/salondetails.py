@@ -5,69 +5,71 @@ from .owner_func import *
 
 salondetails = Blueprint("salondetails", __name__, url_prefix='/owner')
 
-@salondetails.route('/salondetails',methods=["POST"])
-def get_salonDetails():
-    data = request.get_json()
-    if data:
-        uid = data['uid']
-    elif current_user.is_authenticated:
-        uid = current_user.id
-    
-    if uid:
-        return get_business_info(uid)
-
-    
-@salondetails.route('/manage-details', methods=['POST'])
+@salondetails.route('/salon', methods=['GET'])
 @login_required
-def manage_details():
-    """
-    Send all salon details through api request including old and new values
-    Expecting uid firstName lastName phoneNumber salonName salonStreet salonCity salonState salonCountry salonZipCode
-    """
-    data = request.get_json()
-
-    if len(data) < 10:
-        return jsonify({
-            "status":"failure",
-            "message":"Not enough values sent through api request"
-        })
-    
-    # expecting the following keys in data variable
-    for key in data:
-        if(key == "uid"):
-            continue
-        elif(key == "firstName"):
-            continue
-        elif(key == "lastName"):
-            continue
-        elif(key == "phoneNumber"):
-            continue
-        elif(key == "salonName"):
-            continue
-        elif(key == "salonStreet"):
-            continue
-        elif(key == "salonCity"):
-            continue
-        elif(key == "salonState"):
-            continue
-        elif(key == "salonCountry"):
-            continue
-        elif(key == "salonZipCode"):
-            continue
-        else:
-            return
-
+def get_salon():
     try:
-        update_salon(data)
+        uid = current_user.id
+        salon = get_salon_details_by_uid(uid)
+        
+        if not salon:
+            return jsonify({
+                "status": "failure",
+                "message": "Salon not found"
+            }), 404
+        
         return jsonify({
-            "status": "success",
-            "message": "updated salon details"
-        })
+            "bid": salon["bid"],
+            "name": salon["name"],
+            "status": bool(salon["status"]),
+            "street": salon.get("street"),
+            "city": salon.get("city"),
+            "state": salon.get("state"),
+            "zip_code": salon.get("zip_code")
+        }), 200
     except Error as e:
         return jsonify({
             "status": "failure",
-            "message": "database error",
-            "error": e
-        })
+            "message": "Database error",
+            "error": str(e)
+        }), 500
 
+
+@salondetails.route('/manage-details', methods=['PUT'])
+@login_required
+def manage_details():
+    try:
+        uid = current_user.id
+        data = request.get_json()
         
+        if not data:
+            return jsonify({
+                "status": "failure",
+                "message": "No data provided"
+            }), 400
+        
+        name = data.get("name")
+        status = data.get("status", False)
+        street = data.get("street", "")
+        city = data.get("city", "")
+        state = data.get("state", "")
+        zip_code = data.get("zip_code", "")
+        
+        if not name:
+            return jsonify({
+                "status": "failure",
+                "message": "Salon name is required"
+            }), 400
+        
+        update_salon_details_by_uid(uid, name, status, street, city, state, zip_code)
+        
+        return jsonify({
+            "status": "success",
+            "message": "Salon details updated successfully"
+        }), 200
+    except Error as e:
+        return jsonify({
+            "status": "failure",
+            "message": "Database error",
+            "error": str(e)
+        }), 500
