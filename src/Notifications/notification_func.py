@@ -49,7 +49,7 @@ def email_message(app, msg:Message, to):
         mail.send(msg)
         print(f"Sent email to {to} at {datetime.now()}")
 
-def check_appointment_subscription(uid) -> bool:
+def check_appointment_subscription(cid) -> bool:
     """Return true if user wants to recieve appointment emails
     
     otherwise return
@@ -60,7 +60,7 @@ def check_appointment_subscription(uid) -> bool:
     
     try:
         cursor = conn.cursor(dictionary=True)
-        cursor.execute(query_email_subscriptions, [uid])
+        cursor.execute(query_email_subscriptions, [cid])
         results = cursor.fetchone()
         cursor.close()
         conn.close()
@@ -69,7 +69,7 @@ def check_appointment_subscription(uid) -> bool:
         conn.close()
         raise e
     
-def check_promotion_subscription(uid) -> bool:
+def check_promotion_subscription(cid) -> bool:
     """Return true if user wants to recieve promotion emails
     
     otherwise return
@@ -80,7 +80,7 @@ def check_promotion_subscription(uid) -> bool:
     
     try:
         cursor = conn.cursor(dictionary=True)
-        cursor.execute(query_email_subscriptions, [uid])
+        cursor.execute(query_email_subscriptions, [cid])
         results = cursor.fetchone()
         cursor.close()
         conn.close()

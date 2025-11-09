@@ -1,6 +1,7 @@
 from flask import request, jsonify, Blueprint
 from flask_cors import CORS
 import mysql.connector
+from helper.utils import get_curr_cid
 from dotenv import load_dotenv
 import os
 
@@ -26,10 +27,12 @@ def get_db_connection():
 @manage_email_sub.route("/api/clients/manage-email-subs", methods=["POST"])
 def manage_promotion_subscription():
     data = request.get_json()
-    id = data.get("cid")
+    # id = data.get("cid")
+    promotion : bool = data['promotion']
+    cid = get_curr_cid()
 
-    if not id:
-        return jsonify({"error": "User ID (uid) is required"}), 400
+    # if not id:
+    #     return jsonify({"error": "User ID (uid) is required"}), 400
     
     db = None
     cursor=None
@@ -40,13 +43,13 @@ def manage_promotion_subscription():
         query = """
         update email_subscription
         set promotion = false
-        where uid = %s;
+        where cid = %s;
         """
-        cursor.execute(query, (id,))
+        cursor.execute(query, (cid,))
         db.commit()
 
-        if cursor.rowcount == 0:
-            return jsonify({"message": "No customer found with that ID."}), 404
+        # if cursor.rowcount == 0:
+        #     return jsonify({"message": "No customer found with that ID."}), 404
     except mysql.connector.Error as err:
         print(f"MySQL Error: {err}")
         if db:
@@ -64,9 +67,11 @@ def manage_promotion_subscription():
 @manage_email_sub.route("/api/clients/manage-appt-reminder-subs", methods=["POST"])
 def manage_appt_reminder_subscription():
     data = request.get_json()
-    id = data.get("cid")
-    if not id:
-        return jsonify({"error": "User ID (uid) is required"}), 400
+    # id = data.get("cid")
+    # if not id:
+    #     return jsonify({"error": "User ID (uid) is required"}), 400
+    appt : bool = data['appointment']
+    cid = get_curr_cid()
     
     db = None
     cursor = None
@@ -77,13 +82,13 @@ def manage_appt_reminder_subscription():
         query = """
         update email_subscription
         set appointment = false
-        where uid = %s;
+        where cid = %s;
         """
-        cursor.execute(query, (id,))
+        cursor.execute(query, (cid,))
         db.commit()
 
-        if cursor.rowcount == 0:
-            return jsonify({"message": "No customer found with that ID."}), 404
+        # if cursor.rowcount == 0:
+        #     return jsonify({"message": "No customer found with that ID."}), 404
     except mysql.connector.Error as err:
         print(f"MySQL Error: {err}")
         if db:
