@@ -1,8 +1,8 @@
 query_email_subscriptions = """
 select promotion, appointment
 from salon_app.email_subscription as es
-join salon_app.users u on es.uid=u.uid
-where u.uid = %s;
+join salon_app.customers c on es.cid=c.cid
+where c.cid = %s;
 """
 
 query_customers_business = """

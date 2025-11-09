@@ -36,7 +36,7 @@ def getClientSignUp():
         if not isinstance(cid, int):
             raise Exception("Failed to create customer record")
 
-        create_email_sub(uid)
+        create_email_sub(cid)
 
         return jsonify({
             "status": "success",
@@ -79,8 +79,6 @@ def getBusinessSignUp():
         uid = insert_Auth(data['firstName'],data['lastName'],data['email'],data['password'])
         bid = insert_Owner(uid, data)
 
-        create_email_sub(uid)
-
         return jsonify({
             "status": "success", 
             "message": "Added new business to database",
@@ -121,8 +119,6 @@ def getEmployeeSignUp():
         
         uid = insert_Auth(data['firstName'],data['lastName'],data['email'],data['password'])
         eid = insert_Worker(uid, data)
-
-        create_email_sub(uid)
 
         return jsonify({
             "status": "success",
