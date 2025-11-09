@@ -62,14 +62,14 @@ def create_promo_message(title, description, business):
     return msg
 
 
-def email_appointment(app ,msg: Message, to):
-    with app.app_context():
-        msg.sender = os.getenv('MAIL_USERNAME')
-        msg.recipients = [to]
-        mail.send(msg)
-        print(f"Sent email to {to} at {datetime.now()}")
+# def email_appointment(app ,msg: Message, to):
+#     with app.app_context():
+#         msg.sender = os.getenv('MAIL_USERNAME')
+#         msg.recipients = [to]
+#         mail.send(msg)
+#         print(f"Sent email to {to} at {datetime.now()}")
 
-def email_promotion(app, msg:Message, to):
+def email_message(app, msg:Message, to):
     with app.app_context():
         msg.sender = os.getenv('MAIL_USERNAME')
         msg.recipients = to

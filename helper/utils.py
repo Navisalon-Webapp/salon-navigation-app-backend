@@ -81,7 +81,7 @@ def get_curr_eid():
 
     try:
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT eid FROM business WHERE uid = %s", [uid])
+        cursor.execute("SELECT eid FROM employee WHERE uid = %s", [uid])
         result = cursor.fetchone()
         cursor.close()
         conn.close()
@@ -124,19 +124,25 @@ def get_email(uid):
         raise e
     
 def get_name(uid):
-    """return email of user"""
+    """return ['first name', 'last name'] of user"""
     conn = get_db_connection()
     if conn is None:
         raise ValueError("Database connection failed")
+    cursor = None
     
     try:
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
         cursor.execute(query_name,[uid])
         name = cursor.fetchone()
         return name 
     except Exception as e:
         conn.close()
         raise e
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
     
 def get_appointment_details(aid):
     """return cid, customer first name, customer last name, customer email,
