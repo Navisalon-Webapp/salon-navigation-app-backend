@@ -1,5 +1,6 @@
 from flask import request, jsonify, Blueprint
 from flask_cors import CORS
+from flask_login import login_required, current_user
 import mysql.connector
 from dotenv import load_dotenv
 import os
@@ -26,6 +27,110 @@ def get_db():
         print(f"Error: Database could not connect. : {err}")
         return None
 
+
+
+# Get business ID from current user (owner)
+def get_business_id():
+    uid = getattr(current_user, 'id', None)
+    if not uid:
+        return None
+    
+    db = None
+    cursor = None
+    try:
+        db = get_db()
+        if db is None:
+            return None
+        
+        cursor = db.cursor()
+        query = "SELECT bid FROM business WHERE uid = %s"
+        cursor.execute(query, (uid,))
+        result = cursor.fetchone()
+        return result[0] if result else None
+    except mysql.connector.Error as err:
+        print(f"Error getting business ID: {err}")
+        return None
+    finally:
+        if cursor:
+            cursor.close()
+        if db:
+            db.close()
+
+
+# Get reviews for a business with replies
+@post_reviews.route("/api/owner/get-business-reviews", methods=["GET"])
+@login_required
+def get_business_reviews():
+    bid = get_business_id()
+    
+    if not bid:
+        return jsonify({"message": "Business not found for current user."}), 404
+    
+    db = None
+    cursor = None
+    
+    try:
+        db = get_db()
+        if db is None:
+            return jsonify({"message": "Could not connect to database."}), 500
+        
+        cursor = db.cursor(dictionary=True)
+        
+        # Get reviews with customer names
+        reviews_query = """
+        SELECT r.rvw_id, r.rating, r.comment, r.created_at,
+               u.first_name, u.last_name, r.cid
+        FROM reviews r
+        JOIN customers c ON r.cid = c.cid
+        JOIN users u ON c.uid = u.uid
+        WHERE r.bid = %s
+        ORDER BY r.created_at DESC
+        """
+        cursor.execute(reviews_query, (bid,))
+        reviews = cursor.fetchall()
+        
+        # For each review, get replies
+        for review in reviews:
+            replies_query = """
+            SELECT rr.comment, rr.created_at, u.first_name, u.last_name
+            FROM review_replies rr
+            JOIN users u ON rr.uid = u.uid
+            WHERE rr.rvw_id = %s
+            ORDER BY rr.created_at DESC
+            LIMIT 1
+            """
+            cursor.execute(replies_query, (review['rvw_id'],))
+            reply = cursor.fetchone()
+            
+            if reply:
+                review['reply'] = {
+                    'text': reply['comment'],
+                    'createdAt': reply['created_at'].isoformat() if reply['created_at'] else None,
+                    'ownerName': f"{reply['first_name']} {reply['last_name']}"
+                }
+            else:
+                review['reply'] = None
+        
+        # Format response
+        formatted_reviews = [{
+            'id': str(r['rvw_id']),
+            'reviewerName': f"{r['first_name']} {r['last_name']}",
+            'rating': r['rating'],
+            'comment': r['comment'],
+            'createdAt': r['created_at'].isoformat() if r['created_at'] else None,
+            'reply': r['reply']
+        } for r in reviews]
+        
+        return jsonify(formatted_reviews), 200
+        
+    except mysql.connector.Error as err:
+        print(f"Error fetching reviews: {err}")
+        return jsonify({"message": "Failed to fetch reviews."}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if db:
+            db.close()
 
 
 #clients can leave reviews of businesses
@@ -76,17 +181,21 @@ def leave_review():
 
 #users can leave reply to reviews
 @post_reviews.route("/api/user/leave-reply-review", methods=["POST"])
+@login_required
 def leave_reply():
     data = request.get_json()
 
-    requirements = ["rvw_id", "uid","comment"]
+    requirements = ["rvw_id", "comment"]
 
     review_id = data.get("rvw_id")
-    user_id = data.get("uid")
+    user_id = getattr(current_user, 'id', None)
     comment = data.get("comment")
 
     if not all (key in data for key in requirements):
-        return jsonify({"message": "Missing one of the required fields: rvw_id, uid, comment."}), 400
+        return jsonify({"message": "Missing one of the required fields: rvw_id, comment."}), 400
+    
+    if not user_id:
+        return jsonify({"message": "User not authenticated."}), 401
 
     db = None
     cursor = None       
