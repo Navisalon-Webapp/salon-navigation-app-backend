@@ -8,7 +8,6 @@ from src.Auth.signin import signin
 from src.Worker.appointments import appointments
 from src.Owner.salondetails import salondetails
 from src.Owner.manage_products import manage_products
-from src.Auth import init_auth
 from src.Clients.Clients_Browse import client_browse
 from src.Worker.Workers_Browse import workers_browse
 from src.Reviews.Post_Reviews import post_reviews
