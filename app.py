@@ -25,6 +25,9 @@ from src.LoyaltyProgram.create_loyalty_programs import loyalty_prog
 from src.Promotions.create_promos import promotions
 from src.Clients.Clients_Review.Clients_Review_Workers import review_workers
 from src.ViewVisitHistory.owner_view_visit_history import visit_hist
+from src.Clients.Clients_Manage_Cart.clients_addto_cart import addto_cart
+from src.Clients.Clients_Manage_Cart.clients_view_cart import manage_cart
+from src.Clients.View_Loyal_Points.view_loyalty_points import view_lpoints
 
 
 
@@ -81,6 +84,9 @@ app.register_blueprint(loyalty_prog)
 app.register_blueprint(promotions)
 app.register_blueprint(review_workers)
 app.register_blueprint(visit_hist)
+app.register_blueprint(addto_cart)
+app.register_blueprint(manage_cart)
+app.register_blueprint(view_lpoints)
 
 app.config['SECRET_KEY']=os.getenv('SECRET_KEY')
 
