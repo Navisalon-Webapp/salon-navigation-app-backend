@@ -2,6 +2,7 @@ from flask import request, jsonify, Blueprint
 from flask_cors import CORS
 import mysql.connector
 from helper.utils import get_curr_cid
+from flask_login import login_required
 from dotenv import load_dotenv
 import os
 
@@ -25,6 +26,7 @@ def get_db_connection():
 
 #clients can manage promotion email subscriptions
 @manage_email_sub.route("/api/clients/manage-email-subs", methods=["POST"])
+@login_required
 def manage_promotion_subscription():
     data = request.get_json()
     # id = data.get("cid")
@@ -65,6 +67,7 @@ def manage_promotion_subscription():
 
 #clients can manage appointment reminder email subscriptions
 @manage_email_sub.route("/api/clients/manage-appt-reminder-subs", methods=["POST"])
+@login_required
 def manage_appt_reminder_subscription():
     data = request.get_json()
     # id = data.get("cid")
