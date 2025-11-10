@@ -25,6 +25,7 @@ from src.LoyaltyProgram.create_loyalty_programs import loyalty_prog
 from src.Promotions.create_promos import promotions
 from src.Clients.Clients_Review.Clients_Review_Workers import review_workers
 from src.ViewVisitHistory.owner_view_visit_history import visit_hist
+from src.Admin.metrics import metrics
 
 
 
@@ -81,6 +82,7 @@ app.register_blueprint(loyalty_prog)
 app.register_blueprint(promotions)
 app.register_blueprint(review_workers)
 app.register_blueprint(visit_hist)
+app.register_blueprint(metrics)
 
 app.config['SECRET_KEY']=os.getenv('SECRET_KEY')
 

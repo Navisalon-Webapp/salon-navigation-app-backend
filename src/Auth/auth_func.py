@@ -174,6 +174,14 @@ def insert_Worker(uid, data):
     conn.close()
     return eid
 
+def insert_Admin(uid):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("INSERT INTO users_roles (uid, rid) VALUES (%s, %s);",[uid,4])
+    conn.commit()
+    cursor.close()
+    conn.close()
+
 #sign in functions
 def get_Auth(email):
     conn = get_db_connection()
@@ -188,6 +196,8 @@ def verify_pass(email, password):
         return False
     else:
         return True
+    
+
     
 def get_uid(email):
     conn = get_db_connection()
