@@ -213,3 +213,68 @@ def employee_reschedule():
             conn.close()
         if conn:
             conn.close()
+
+@schedule_appt.route('/employee/send-notification/<int:aid>', methods=['POST'])
+@login_required
+def send_appointment_notification(aid):
+    uid = current_user.id
+    if not check_role(uid) == "employee":
+        return jsonify({
+            "status": "failure",
+            "message": "current user not an employee"
+        }), 403
+    
+    eid = get_curr_eid()
+    
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({"status": "failure", "message": "db connection error"}), 500
+    
+    cursor = None
+    try:
+        appt_details = get_appointment_details(aid)
+        
+        if not appt_details:
+            return jsonify({
+                "status": "failure",
+                "message": "appointment not found"
+            }), 404
+        
+        if appt_details['eid'] != eid:
+            return jsonify({
+                "status": "failure",
+                "message": "appointment not assigned to current employee"
+            }), 403
+        
+        c_name = get_name(appt_details['c_uid'])
+        c_email = get_email(appt_details['c_uid'])
+        e_name = get_name(current_user.id)
+        
+        start_time = appt_details['start_time']
+        time_str = '{:d}:{:02d}'.format(start_time.hour, start_time.minute)
+        date_str = start_time.strftime("%B %d, %Y")
+        
+        message = f"Hello {c_name[0]} {c_name[1]},\n\nThis is a notification from {e_name[0]} {e_name[1]} regarding your appointment on {date_str} at {time_str}.\n\nI may be running a few minutes late. Thank you for your patience!\n\nBest regards,\n{e_name[0]} {e_name[1]}"
+        msg = Message(
+            subject=f"Update: Appointment on {date_str}",
+            body=message,
+            recipients=[c_email]
+        )
+        
+        mail.send(msg)
+        
+        return jsonify({
+            "status": "success",
+            "message": "notification sent successfully"
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            "status": "failure",
+            "message": f"error sending notification: {str(e)}"
+        }), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()

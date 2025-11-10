@@ -27,11 +27,38 @@ def get_eid(uid):
     result = cursor.fetchone()
     return result
 
-def get_appointments(eid):
+def get_appointments(eid, date_filter=None):
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
-    cursor.execute(query_appointments,[eid])
+    
+    if date_filter:
+        query = """
+        SELECT a.aid, a.start_time, a.expected_end_time, a.notes, u.first_name, u.last_name, s.name as service_name, s.durationMin
+        FROM appointments a
+        LEFT JOIN customers c ON a.cid = c.cid
+        LEFT JOIN users u ON c.uid = u.uid
+        LEFT JOIN services s ON a.sid = s.sid
+        WHERE a.eid = %s 
+        AND DATE(a.start_time) = %s
+        ORDER BY a.start_time
+        """
+        cursor.execute(query, [eid, date_filter])
+    else:
+        query = """
+        SELECT a.aid, a.start_time, a.expected_end_time, a.notes, u.first_name, u.last_name, s.name as service_name, s.durationMin
+        FROM appointments a
+        LEFT JOIN customers c ON a.cid = c.cid
+        LEFT JOIN users u ON c.uid = u.uid
+        LEFT JOIN services s ON a.sid = s.sid
+        WHERE a.eid = %s 
+        AND a.start_time > CURRENT_TIMESTAMP()
+        ORDER BY a.start_time
+        """
+        cursor.execute(query, [eid])
+    
     result = cursor.fetchall()
+    cursor.close()
+    conn.close()
     return result
 
 def get_avail(eid):
