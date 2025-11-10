@@ -133,6 +133,44 @@ def getEmployeeSignUp():
             "message": str(e)
         }), 400
     
+@signup.route('/admin/signup', methods=['POST'])
+def getAdminSignUp():
+    try:
+        data=request.get_json()
+        if(valid_email(data['email'])==False):
+            return jsonify({
+                "status": "failure",
+                "message": "invalid email address",
+                "invalid_email": data['email']
+            }), 400
+        if(verify_email(data['email'])):
+            return jsonify({
+                "status": "failure",
+                "message": "customer email already exists",
+                "existing_email": data['email']
+            }), 409
+        if(verify_confirmPass(data['password'],data['confirmPassword'])==False):
+            return jsonify({
+                "status": "failure",
+                "message": "passwords do not match",
+                "password": data['password'],
+                "confirmPassword": data['confirmPassword']
+            }), 400
+        
+        uid = insert_Auth(data['firstName'],data['lastName'],data['email'],data['password'])
+        insert_Admin(uid)
+        return jsonify({
+            "status": "success",
+            "message": "Added new admin to database",
+            "User_ID": uid
+        }), 200
+    except Exception as e:
+        print("error", e)
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 400
+    
 @signup.route('/list-business', methods=['GET'])
 def business_list():
     conn = get_db_connection()
