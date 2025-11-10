@@ -30,7 +30,7 @@ def get_db():
 
 #get current logged-in client's customer id
 def get_cid():
-    uid = getattr(current_user, 'cid', None)
+    uid = getattr(current_user, 'id', None)
     if uid is None:
         print("Error: No UID found in request context.")
         return None
@@ -75,7 +75,7 @@ def view_loyalty_points():
             print("Error: Could not establish connection to the database.")
             return jsonify({"message": "Could not connect to database."}), 500
         
-        customer_id = get_cid
+        customer_id = get_cid()
         if customer_id is None:
             return jsonify({"message": "Could not retrieve customer ID."}), 500
         
@@ -92,11 +92,14 @@ def view_loyalty_points():
         loyalty_points = []
         for (bid, name, points_balance) in results:
             loyalty_points.append({
+                "id": f"s{bid}",
                 "bid": bid,
-                "business_name": name,
-                "points_balance": points_balance
+                "name": name,
+                "points": float(points_balance) if points_balance else 0,
+                "goal": 100,
+                "address": ""
             })
-        return jsonify({"loyalty_points": loyalty_points}), 200
+        return jsonify(loyalty_points), 200
     except mysql.connector.Error as err:
         print(f"Error: Database query failed. : {err}")
         return jsonify({"message": "Database query failed."}), 500
