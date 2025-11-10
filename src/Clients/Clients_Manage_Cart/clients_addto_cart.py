@@ -113,7 +113,7 @@ def add_to_cart():
 
         
         query = """
-        insert into carts(cid, pid, amount, bid)
+        insert into cart(cid, pid, amount, bid)
         values(%s, %s, %s, %s)
         on duplicate key update amount = amount + VALUES(amount);
         """
@@ -157,7 +157,7 @@ def delete_cart_item(cart_id):
         
         
 
-        cursor = db.cursor()
+        cursor = db.cursor(dictionary=True)
 
 
         #identify the item to be deleted and its amount
@@ -166,7 +166,7 @@ def delete_cart_item(cart_id):
         where cart_id = %s and cid = %s;  
         """  
         cursor.execute(item_query, (cart_id, customer_id))
-        item = cursor.fetchone(dictionary=True)
+        item = cursor.fetchone()
         if item is None:
             return jsonify({"message": "Cart item not found."}), 404
 
@@ -180,7 +180,7 @@ def delete_cart_item(cart_id):
         SET p.stock = p.stock + %s
         WHERE p.pid = %s;
         """   
-        cursor.execute(update_stock_q, (pid, return_amount))
+        cursor.execute(update_stock_q, (return_amount, pid))
 
         # delete the item from cart
         delete_query = """

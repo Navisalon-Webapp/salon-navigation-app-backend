@@ -8,7 +8,7 @@ from src.Auth.signin import signin
 from src.Worker.appointments import appointments
 from src.Owner.salondetails import salondetails
 from src.Owner.manage_products import manage_products
-from src.Clients.Clients_Browse import client_browse
+from src.Clients.Clients_Browse.Clients_Browse import client_browse
 from src.Worker.Workers_Browse import workers_browse
 from src.Reviews.Post_Reviews import post_reviews
 from src.Appointments.clients_cancel_appt import cancel_appts
@@ -29,6 +29,8 @@ from src.Admin.metrics import metrics
 from src.Clients.Clients_Manage_Cart.clients_addto_cart import addto_cart
 from src.Clients.Clients_Manage_Cart.clients_view_cart import manage_cart
 from src.Clients.View_Loyal_Points.view_loyalty_points import view_lpoints
+from src.Revenue.get_revenue import revenue
+from src.Clients.get_appointment import get_appointment
 
 
 
@@ -89,6 +91,8 @@ app.register_blueprint(metrics)
 app.register_blueprint(addto_cart)
 app.register_blueprint(manage_cart)
 app.register_blueprint(view_lpoints)
+app.register_blueprint(revenue)
+app.register_blueprint(get_appointment)
 
 app.config['SECRET_KEY']=os.getenv('SECRET_KEY')
 
