@@ -113,7 +113,7 @@ class Service():
             )
 
             self.job_added = True
-            print(f"Health monitoring started for service {self.id} every {interval_minutes} seconds")
+            print(f"Health monitoring started for service {self.id} every {interval_minutes} minutes {interval_seconds} seconds")
         except Exception as e:
             print(f"failed to start monitoring {e}")
             
