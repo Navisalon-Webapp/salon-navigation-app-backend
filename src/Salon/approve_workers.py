@@ -17,7 +17,7 @@ db = mysql.connector.connect(
 @login_required
 def get_pending_workers():
     bid = get_curr_bid()
-    cursor = db.cursor(dictionary=True)
+    cursor = db.cursor(dictionary=True, buffered=True)
     cursor.execute("""
         SELECT e.eid as id, CONCAT(u.first_name, ' ', u.last_name) AS name, a.email
         FROM employee e
@@ -33,7 +33,7 @@ def get_pending_workers():
 @approve_workers.route("/<int:eid>/approve", methods=["POST"])
 @login_required
 def approve_worker(eid):
-    cursor = db.cursor()
+    cursor = db.cursor(buffered=True)
     cursor.execute("UPDATE employee SET approved=TRUE WHERE eid=%s", (eid,))
     db.commit()
     return jsonify({"message": "Worker approved"})
@@ -41,7 +41,7 @@ def approve_worker(eid):
 @approve_workers.route("/<int:eid>/reject", methods=["POST"])
 @login_required
 def reject_worker(eid):
-    cursor = db.cursor()
+    cursor = db.cursor(buffered=True)
     cursor.execute("DELETE FROM employee WHERE eid=%s", (eid,))
     db.commit()
     return jsonify({"message": "Worker rejected"})

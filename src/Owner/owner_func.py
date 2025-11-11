@@ -23,7 +23,7 @@ def get_db_connection():
 
 def get_salon_details_by_uid(uid):
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor(dictionary=True, buffered=True)
     cursor.execute(get_salon_details, [uid])
     result = cursor.fetchone()
     cursor.close()
@@ -32,20 +32,32 @@ def get_salon_details_by_uid(uid):
 
 def update_salon_details_by_uid(uid, name, status, street, city, state, zip_code):
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
     
-    cursor.execute(update_salon_basic, [name, status, uid])
-    cursor.execute(update_salon_address, [street, city, state, zip_code, uid])
-    
-    conn.commit()
-    cursor.close()
-    conn.close()
+    try:
+        # Use separate cursors for each query to avoid buffering issues
+        cursor1 = conn.cursor(dictionary=True, buffered=True)
+        cursor1.execute(update_salon_basic, [name, status, uid])
+        cursor1.close()
+        
+        cursor2 = conn.cursor(dictionary=True, buffered=True)
+        cursor2.execute(update_salon_address, [street, city, state, zip_code, uid])
+        cursor2.close()
+        
+        conn.commit()
+    except Error as e:
+        print(f"Error in update_salon_details_by_uid: {e}")
+        if conn:
+            conn.rollback()
+        raise e
+    finally:
+        if conn:
+            conn.close()
 
 def get_products_by_bid(bid):
     conn = None
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor(dictionary=True, buffered=True)
         cursor.execute(get_salon_products, (bid,))
         products = cursor.fetchall()
         
@@ -67,7 +79,7 @@ def get_products_by_bid(bid):
 
 def add_product(bid, name, price, stock, description=None, image=None):
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor(dictionary=True, buffered=True)
     cursor.execute(create_product, [bid, name, price, stock, description, image])
     conn.commit()
     pid = cursor.lastrowid
@@ -77,7 +89,7 @@ def add_product(bid, name, price, stock, description=None, image=None):
 
 def update_product_stock_by_pid(pid, stock):
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor(dictionary=True, buffered=True)
     cursor.execute(update_product_stock, [stock, pid])
     conn.commit()
     cursor.close()
@@ -87,7 +99,7 @@ def get_product_by_id(pid):
     conn = None
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor(dictionary=True, buffered=True)
         cursor.execute(get_product_by_id_query, (pid,))
         product = cursor.fetchone()
         
@@ -106,7 +118,7 @@ def get_product_by_id(pid):
 
 def delete_product_by_pid(pid):
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor(dictionary=True, buffered=True)
     cursor.execute(delete_product_query, [pid])
     conn.commit()
     cursor.close()
@@ -123,7 +135,7 @@ def get_curr_bid():
         raise ValueError("Database connection failed")
 
     try:
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor(dictionary=True, buffered=True)
         cursor.execute("SELECT bid FROM business WHERE uid = %s", (uid,))
         row = cursor.fetchone()
         cursor.close()

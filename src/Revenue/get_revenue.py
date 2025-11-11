@@ -36,7 +36,7 @@ def get_business_id():
         if db is None:
             return None
         
-        cursor = db.cursor()
+        cursor = db.cursor(buffered=True)
         query = "SELECT bid FROM business WHERE uid = %s"
         cursor.execute(query, (uid,))
         result = cursor.fetchone()
@@ -67,7 +67,7 @@ def get_revenue():
         if db is None:
             return jsonify({"message": "Could not connect to database."}), 500
         
-        cursor = db.cursor()
+        cursor = db.cursor(buffered=True)
         
         # Get today's revenue
         daily_query = """

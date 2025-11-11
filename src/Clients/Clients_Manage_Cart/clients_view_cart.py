@@ -39,7 +39,7 @@ def get_cid():
     if db is None:
         print("Error: Could not establish connection to the database.")
         return None
-    cursor = db.cursor()
+    cursor = db.cursor(buffered=True)
     try:
         query = "select cid from customers where uid = %s;"
         cursor.execute(query, (uid,))
@@ -78,7 +78,7 @@ def view_cart():
         if customer_id is None:
             return jsonify({"message": "Could not retrieve customer ID."}), 500
         
-        cursor = db.cursor()
+        cursor = db.cursor(buffered=True)
 
         
         query = """
@@ -140,7 +140,7 @@ def alter_cart_item(cart_id):
         
         
 
-        cursor = db.cursor()
+        cursor = db.cursor(buffered=True)
 
         query = """
         update cart
@@ -189,7 +189,7 @@ def checkout():
         if db is None:
             return jsonify({"message": "Could not connect to database."}), 500
         
-        cursor = db.cursor()
+        cursor = db.cursor(buffered=True)
         
         # Get cart items to process
         query = "SELECT cart_id FROM cart WHERE cid = %s"

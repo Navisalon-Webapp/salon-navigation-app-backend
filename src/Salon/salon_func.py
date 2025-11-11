@@ -31,7 +31,7 @@ def get_curr_bid():
         raise ValueError("Database connection failed")
 
     try:
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor(dictionary=True, buffered=True)
         cursor.execute("SELECT bid FROM business WHERE uid = %s", (uid,))
         row = cursor.fetchone()
         cursor.close()

@@ -22,14 +22,14 @@ def get_db_connection():
 
 def get_eid(uid):
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor(dictionary=True, buffered=True)
     cursor.execute(query_eid,[uid])
     result = cursor.fetchone()
     return result
 
 def get_appointments(eid, date_filter=None):
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor(dictionary=True, buffered=True)
     
     if date_filter:
         query = """
@@ -63,7 +63,7 @@ def get_appointments(eid, date_filter=None):
 
 def get_avail(eid):
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor(dictionary=True, buffered=True)
     cursor.execute(query_availability,[eid])
     schedule = cursor.fetchall()
     return schedule
@@ -71,36 +71,41 @@ def get_avail(eid):
 def insert_avail(eid, week_data):
     from datetime import datetime
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor(dictionary=True, buffered=True)
 
     try:
+        # First, delete all existing schedules for this employee
+        cursor.execute("DELETE FROM schedule WHERE eid = %s", [eid])
+        
+        # Map frontend day names to 3-letter abbreviations
+        day_map = {
+            "monday": "Mon",
+            "tuesday": "Tue",
+            "wednesday": "Wed",
+            "thursday": "Thu",
+            "friday": "Fri",
+            "saturday": "Sat",
+            "sunday": "Sun"
+        }
+        
         for day, info in week_data.items():
             if info["enabled"]:
-                # Convert time strings (HH:MM) to full datetime using a reference date
-                # We'll use 1970-01-01 as the reference date (epoch)
+                # Parse time strings (HH:MM)
                 start_parts = info["start"].split(":")
                 end_parts = info["end"].split(":")
                 
-                # Create datetime objects with reference date
+                # Create time-only timestamps using a reference date (1970-01-01)
                 start_time = datetime(1970, 1, 1, int(start_parts[0]), int(start_parts[1]), 0)
                 finish_time = datetime(1970, 1, 1, int(end_parts[0]), int(end_parts[1]), 0)
                 
-                # Check if that day is already in worker's schedule
-                cursor.execute("SELECT sched_id FROM schedule WHERE eid = %s AND day = %s",[eid, day])
-                exists = cursor.fetchone()
-
-                if exists:
-                    cursor.execute("UPDATE schedule SET start_time = %s, finish_time = %s WHERE sched_id = %s",
-                                   [start_time, finish_time, exists["sched_id"]])
-                else:
-                    cursor.execute("INSERT INTO schedule (eid, day, start_time, finish_time) VALUES (%s, %s, %s, %s)",
-                            [eid, day, start_time, finish_time]
-                        )    
-            else:
-                # If day exists but is not selected
-                cursor.execute("DELETE FROM schedule WHERE eid = %s AND day = %s",
-                        [eid, day],
-                    )
+                # Get the 3-letter day abbreviation
+                day_name = day_map.get(day.lower(), day.capitalize()[:3])
+                
+                # Insert the schedule entry with the day column
+                cursor.execute(
+                    "INSERT INTO schedule (eid, day, start_time, finish_time) VALUES (%s, %s, %s, %s)",
+                    [eid, day_name, start_time, finish_time]
+                )
         
         conn.commit()
     except mysql.connector.Error as e:
@@ -110,4 +115,5 @@ def insert_avail(eid, week_data):
     finally:
         cursor.close()
         conn.close()
-    return True    
+    return True
+    

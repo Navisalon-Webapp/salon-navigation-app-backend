@@ -42,7 +42,7 @@ def get_business_id():
         if db is None:
             return None
         
-        cursor = db.cursor()
+        cursor = db.cursor(buffered=True)
         query = "SELECT bid FROM business WHERE uid = %s"
         cursor.execute(query, (uid,))
         result = cursor.fetchone()
@@ -74,7 +74,7 @@ def get_business_reviews():
         if db is None:
             return jsonify({"message": "Could not connect to database."}), 500
         
-        cursor = db.cursor(dictionary=True)
+        cursor = db.cursor(dictionary=True, buffered=True)
         
         # Get reviews with customer names
         reviews_query = """
@@ -159,7 +159,7 @@ def leave_review():
             print("Error: Could not establish connection to the database.")
             return jsonify({"message": "Could not connect to database."}), 500
     
-        cursor = db.cursor()
+        cursor = db.cursor(buffered=True)
         query = """ 
         insert into reviews(bid, cid, rating, comment)
         values(%s, %s, %s, %s);
@@ -207,7 +207,7 @@ def leave_reply():
             print("Error: Could not establish connection to the database.")
             return jsonify({"message": "Could not connect to database."}), 500
     
-        cursor = db.cursor()
+        cursor = db.cursor(buffered=True)
         query = """ 
         insert into review_replies(rvw_id, uid, comment)
         values(%s, %s, %s);
