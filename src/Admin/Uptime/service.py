@@ -64,7 +64,7 @@ class Service():
         print(f"Health check at {datetime.now()}")
         
         try:
-            response = requests.get("http://localhost:5000/uptime/health", timeout=10)
+            response = requests.get(f"{self.app_url}/uptime/health", timeout=10)
             if response.status_code == 200:
                 data = response.json()
                 self.update_uptime()
@@ -88,7 +88,7 @@ class Service():
                 'error': str(e)
             }
 
-    def start_monitoring(self, scheduler, interval_minutes=30):
+    def start_monitoring(self, scheduler, interval_minutes=5, interval_seconds=0):
 
         if self.job_added:
             print("Monitoring job already added")
@@ -106,7 +106,8 @@ class Service():
             self.scheduler.add_job(
                 func=self.health_check,
                 trigger='interval',
-                seconds=interval_minutes,
+                minutes=interval_minutes,
+                seconds=interval_seconds,
                 id=f"{self.id}",
                 replace_existing=True
             )
