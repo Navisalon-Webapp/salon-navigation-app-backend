@@ -19,7 +19,7 @@ db = mysql.connector.connect(
     database=os.getenv("DB_NAME")
 )
 
-cursor = db.cursor()
+cursor = db.cursor(buffered=True)
 
 
 #clients can browse salons
@@ -73,21 +73,76 @@ a.street, a.city, a.state, a.country, a.zip_code
 @client_browse.route("/api/clients/view-prev-appointments", methods=["GET"])
 @login_required #can only be accessed by logged in clients
 def client_view_appoints():
-    query = """ 
+    # First get the customer ID for the current user
+    try:
+        cid_query = "SELECT cid FROM customers WHERE uid = %s"
+        cursor.execute(cid_query, (current_user.id,))
+        cid_result = cursor.fetchone()
+        
+        if not cid_result:
+            return jsonify({"error": "Customer not found"}), 404
+        
+        cid = cid_result[0]
+        
+        query = """ 
 select a.aid as appointment_id, s.name as service_name, s.price as service_price, u.first_name, 
 u.last_name, e.eid as employee_id, a.start_time, a.expected_end_time, a.end_time
 from appointments a
 join employee e on a.eid = e.eid
 join services s on a.sid = s.sid
 join users u on e.uid = u.uid
+WHERE a.cid = %s AND a.start_time < NOW()
+ORDER BY a.start_time DESC
 """
 
-    cursor.execute(query)
-    rows = cursor.fetchall()
-    appointments = [{"appointment_id": row[0], "service_name": row[1], 
-                "service_price": row[2], "employee_first_name": row[3],
-                "employee_last_name": row[4], "employee_id": row[5],
-                "start_time": row[6], "expected_end_time": row[7],
-                "end_time": row[8]
-                } for row in rows]
-    return jsonify(appointments)
+        cursor.execute(query, (cid,))
+        rows = cursor.fetchall()
+        appointments = [{"appointment_id": row[0], "service_name": row[1], 
+                    "service_price": row[2], "employee_first_name": row[3],
+                    "employee_last_name": row[4], "employee_id": row[5],
+                    "start_time": row[6], "expected_end_time": row[7],
+                    "end_time": row[8]
+                    } for row in rows]
+        return jsonify(appointments)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+#clients can browse future appointments
+@client_browse.route("/api/clients/view-future-appointments", methods=["GET"])
+@login_required #can only be accessed by logged in clients
+def client_view_future_appoints():
+    # First get the customer ID for the current user
+    try:
+        cid_query = "SELECT cid FROM customers WHERE uid = %s"
+        cursor.execute(cid_query, (current_user.id,))
+        cid_result = cursor.fetchone()
+        
+        if not cid_result:
+            return jsonify({"error": "Customer not found"}), 404
+        
+        cid = cid_result[0]
+        
+        query = """ 
+select a.aid as appointment_id, s.name as service_name, s.price as service_price, u.first_name, 
+u.last_name, e.eid as employee_id, a.start_time, a.expected_end_time, a.end_time
+from appointments a
+join employee e on a.eid = e.eid
+join services s on a.sid = s.sid
+join users u on e.uid = u.uid
+WHERE a.cid = %s AND a.start_time >= NOW()
+ORDER BY a.start_time ASC
+"""
+
+        cursor.execute(query, (cid,))
+        rows = cursor.fetchall()
+        appointments = [{"appointment_id": row[0], "service_name": row[1], 
+                    "service_price": row[2], "employee_first_name": row[3],
+                    "employee_last_name": row[4], "employee_id": row[5],
+                    "start_time": row[6], "expected_end_time": row[7],
+                    "end_time": row[8]
+                    } for row in rows]
+        return jsonify(appointments)
+    except Exception as e:
+        print(f"[ERROR] Future appointments error: {e}")
+        return jsonify({"error": str(e)}), 500

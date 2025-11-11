@@ -27,7 +27,7 @@ def business_services(bid):
     if conn is None:
         return jsonify({"status": "Failure",
                         "message": "Error connecting to db"}), 500
-    cur = conn.cursor(dictionary=True)
+    cur = conn.cursor(dictionary=True, buffered=True)
     cur.execute("SELECT sid, name, price, durationMin FROM services WHERE bid = %s", (bid,))
     rows = cur.fetchall()
     cur.close()
@@ -66,6 +66,10 @@ def create_appointment():
     except Exception as e:
         return jsonify({"status": "failure", "message": f"invalid start_time: {e}"}), 400
 
+    # Check if the appointment time is in the past
+    if start_dt <= datetime.now():
+        return jsonify({"status": "failure", "message": "Cannot book appointments in the past"}), 400
+
     conn = get_db_connection()
     if conn is None:
         return jsonify({"status": "failure", "message": "db connection error"}), 500
@@ -90,7 +94,7 @@ def create_appointment():
         start_str = start_dt.strftime("%Y-%m-%d %H:%M:%S")
         expected_str = expected_dt.strftime("%Y-%m-%d %H:%M:%S")
 
-        cur = conn.cursor()
+        cur = conn.cursor(buffered=True)
         insert_q = """
             INSERT INTO appointments (cid, eid, sid, start_time, expected_end_time, notes)
             VALUES (%s, %s, %s, %s, %s, %s)
@@ -117,14 +121,14 @@ def create_appointment():
         return jsonify({"status": "success", "message": "appointment created", "appointment_id": new_aid}), 201
 
     except mysql.connector.Error as err:
-        conn.rollback()
-        cur.close()
-        conn.close()
+        if conn:
+            conn.rollback()
+            conn.close()
         return jsonify({"status": "failure", "message": f"db error: {err}"}), 500
     except Exception as e:
-        conn.rollback()
-        cur.close()
-        conn.close()
+        if conn:
+            conn.rollback()
+            conn.close()
         return jsonify({"status": "failure", "message": f"error: {e}"}), 500
     
 @schedule_appt.route('/employee/reschedule', methods=['PUT'])

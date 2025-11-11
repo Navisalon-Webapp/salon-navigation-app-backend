@@ -29,7 +29,7 @@ def get_available_slots(eid):
     
     try:
         request_date = datetime.strptime(date_str, "%Y-%m-%d")
-        day_of_week = request_date.strftime("%a")
+        day_of_week = request_date.strftime("%a")  # Short day name like "Mon", "Tue"
     except ValueError:
         return jsonify({"status": "failure", "message": "invalid date format, use YYYY-MM-DD"}), 400
     
@@ -38,8 +38,9 @@ def get_available_slots(eid):
         return jsonify({"status": "failure", "message": "db connection error"}), 500
     
     try:
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor(dictionary=True, buffered=True)
         
+        # Get worker's schedule for the requested day of the week
         avail_query = """
             SELECT start_time, finish_time
             FROM schedule

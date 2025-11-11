@@ -32,7 +32,7 @@ def get_curr_cid():
         raise ValueError("Database connection failed")
 
     try:
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor(dictionary=True, buffered=True)
         cursor.execute("SELECT cid FROM customers WHERE uid = %s", [uid])
         result = cursor.fetchone()
         cursor.close()
@@ -56,7 +56,7 @@ def get_curr_bid():
         raise ValueError("Database connection failed")
 
     try:
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor(dictionary=True, buffered=True)
         cursor.execute("SELECT bid FROM business WHERE uid = %s", [uid])
         result = cursor.fetchone()
         cursor.close()
@@ -80,7 +80,7 @@ def get_curr_eid():
         raise ValueError("Database connection failed")
 
     try:
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor(dictionary=True, buffered=True)
         cursor.execute("SELECT eid FROM employee WHERE uid = %s", [uid])
         result = cursor.fetchone()
         cursor.close()
@@ -100,12 +100,15 @@ def check_role(uid):
         raise ValueError("Database connection failed")
 
     try:
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor(dictionary=True, buffered=True)
         cursor.execute(query_user_role,[uid])
         role=cursor.fetchone()
+        cursor.close()
+        conn.close()
         return role['name']
     except Exception as e:
-        conn.close()
+        if conn:
+            conn.close()
         raise e
     
 def get_email(uid):
@@ -115,12 +118,15 @@ def get_email(uid):
         raise ValueError("Database connection failed")
     
     try:
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor(dictionary=True, buffered=True)
         cursor.execute(query_email,[uid])
         email = cursor.fetchone()
+        cursor.close()
+        conn.close()
         return email['email']
     except Exception as e:
-        conn.close()
+        if conn:
+            conn.close()
         raise e
     
 def get_name(uid):
@@ -131,7 +137,7 @@ def get_name(uid):
     cursor = None
     
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(buffered=True)
         cursor.execute(query_name,[uid])
         name = cursor.fetchone()
         return name 
@@ -160,13 +166,13 @@ def get_appointment_details(aid):
         raise ValueError("Database connection failed")
     
     try:
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor(dictionary=True, buffered=True)
         cursor.execute(query_appointment, [aid])
         results = cursor.fetchone()
+        cursor.close()
+        conn.close()
         return results
     except Exception as e:
-        conn.close()
+        if conn:
+            conn.close()
         raise e
-    finally:
-        if not conn.is_connected():
-            conn.close

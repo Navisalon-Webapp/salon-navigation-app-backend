@@ -21,7 +21,7 @@ def get_db_connection():
     
 
 def get_cid_for_uid(conn, uid):
-    cur = conn.cursor(dictionary=True)
+    cur = conn.cursor(dictionary=True, buffered=True)
     cur.execute("SELECT cid FROM customers WHERE uid = %s", (uid,))
     row = cur.fetchone()
     cur.close()

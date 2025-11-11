@@ -45,7 +45,7 @@ def send_promo(msg, email):
 @login_required
 def create_promos():
     data = request.get_json()
-    lprog_id = data.get("lprog_id")
+    lprog_id = data.get("lprog_id", None)  # Make it optional
     start_date = data.get("start_date")
     end_date = data.get("end_date")
     is_recurring = data.get("is_recurring", False)
@@ -56,7 +56,6 @@ def create_promos():
     description = data.get("description", None)
     
     required_fields = {
-        "lprog_id": lprog_id,
         "start_date": start_date,
         "end_date": end_date,
         "start_time": start_time,
@@ -84,12 +83,12 @@ def create_promos():
             print("Error: Could not establish connection to the database.")
             return jsonify({"message": "Could not connect to database."}), 500
     
-        cursor = db.cursor()
+        cursor = db.cursor(buffered=True)
         query = """ 
-        insert into promotions(lprog_id, start_date, end_date, is_recurring, recurr_day, start_time, end_time, title, description)
-        values(%s, %s, %s, %s, %s, %s, %s, %s, %s);
+        insert into promotions(start_date, end_date, is_recurring, recurr_day, start_time, end_time, title, description)
+        values(%s, %s, %s, %s, %s, %s, %s, %s);
          """
-        cursor.execute(query, (lprog_id, start_date, end_date, is_recurring, recurr_day, start_time, end_time, title, description))
+        cursor.execute(query, (start_date, end_date, is_recurring, recurr_day, start_time, end_time, title, description))
         promo_id = cursor.lastrowid
         db.commit() 
         

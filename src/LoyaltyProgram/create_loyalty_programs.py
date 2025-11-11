@@ -58,7 +58,7 @@ def create_lprogs():
             print("Error: Could not establish connection to the database.")
             return jsonify({"message": "Could not connect to database."}), 500
     
-        cursor = db.cursor()
+        cursor = db.cursor(buffered=True)
 
         #f string: cleanly insert prog_type into query
         query_lprog = f"""

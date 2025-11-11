@@ -39,7 +39,7 @@ def get_cid():
     if db is None:
         print("Error: Could not establish connection to the database.")
         return None
-    cursor = db.cursor()
+    cursor = db.cursor(buffered=True)
     try:
         query = "select cid from customers where uid = %s;"
         cursor.execute(query, (uid,))
@@ -79,7 +79,7 @@ def view_loyalty_points():
         if customer_id is None:
             return jsonify({"message": "Could not retrieve customer ID."}), 500
         
-        cursor = db.cursor()
+        cursor = db.cursor(buffered=True)
 
         
         query = """

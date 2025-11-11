@@ -19,7 +19,7 @@ db = mysql.connector.connect(
 def get_services():
     try:
         bid = get_curr_bid()
-        cursor = db.cursor()
+        cursor = db.cursor(buffered=True)
         cursor.execute(
             "SELECT sid, name, price, durationMin FROM services WHERE bid = %s", (bid,)
         )
@@ -49,7 +49,7 @@ def add_service():
         if not name or price is None:
             return jsonify({"error": "Missing fields"}), 400
 
-        cursor = db.cursor()
+        cursor = db.cursor(buffered=True)
         cursor.execute(
             "INSERT INTO services (name, price, bid, durationMin) VALUES (%s, %s, %s, %s)",
             (name, price, bid, durationMin),
@@ -79,7 +79,7 @@ def update_service(sid):
         durationMin = data.get("durationMin")
         price = data.get("priceUsd")
 
-        cursor = db.cursor()
+        cursor = db.cursor(buffered=True)
         cursor.execute(
             "UPDATE services SET name = %s, price = %s , durationMin = %s WHERE sid = %s",
             (name, price, durationMin, sid),
@@ -97,7 +97,7 @@ def update_service(sid):
 @login_required
 def delete_service(sid):
     try:
-        cursor = db.cursor()
+        cursor = db.cursor(buffered=True)
         cursor.execute("DELETE FROM services WHERE sid = %s", (sid,))
         db.commit()
         cursor.close()
