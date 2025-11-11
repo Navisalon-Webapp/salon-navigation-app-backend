@@ -32,6 +32,8 @@ from src.Clients.Clients_Manage_Cart.clients_addto_cart import addto_cart
 from src.Clients.Clients_Manage_Cart.clients_view_cart import manage_cart
 from src.Clients.View_Loyal_Points.view_loyalty_points import view_lpoints
 from src.Admin.Uptime.service import Service
+from src.Revenue.get_revenue import revenue
+from src.Clients.get_appointment import get_appointment
 
 
 
@@ -93,6 +95,8 @@ app.register_blueprint(addto_cart)
 app.register_blueprint(manage_cart)
 app.register_blueprint(view_lpoints)
 app.register_blueprint(uptime)
+app.register_blueprint(revenue)
+app.register_blueprint(get_appointment)
 
 app.config['SECRET_KEY']=os.getenv('SECRET_KEY')
 
