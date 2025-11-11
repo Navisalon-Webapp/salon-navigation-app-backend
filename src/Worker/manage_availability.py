@@ -6,11 +6,15 @@ from datetime import timedelta
 worker_avail = Blueprint("worker_avail",__name__,url_prefix='/worker')
 
 def format_time(t):
+    from datetime import timedelta, datetime
     if isinstance(t, timedelta):
         total_seconds = int(t.total_seconds())
         hours = total_seconds // 3600
         minutes = (total_seconds % 3600) // 60
         return f"{hours:02d}:{minutes:02d}"
+    elif isinstance(t, datetime):
+        # If it's a datetime, just extract the time part
+        return f"{t.hour:02d}:{t.minute:02d}"
     elif isinstance(t, str):
         #HH:MM format
         parts = t.split(":")
@@ -45,7 +49,6 @@ def get_availability():
         }), 403
     
     eid = get_eid(current_user.id)
-    print("DEBUG: eid result:", eid)
     curr_avail = get_avail(eid['eid'])
     curr_avail = serialize_availability(curr_avail)
     

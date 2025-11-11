@@ -16,6 +16,10 @@ from src.Appointments.users_add_appt_notes import add_notes
 from src.Email_Subscriptions.clients_mnge_email_subs import manage_email_sub
 from src.Auth.User import login_manager
 from src.Appointments.schedule_appt import schedule_appt
+from src.Appointments.get_available_workers import get_avail_workers
+from src.Appointments.get_worker_slots import get_worker_slots
+from src.Appointments.appointment_images import appointment_images
+from src.Appointments.appointment_notes import appointment_notes
 from src.Worker.manage_availability import worker_avail
 from src.Salon.manage_services import manage_services
 from src.Salon.approve_workers import approve_workers
@@ -78,6 +82,10 @@ app.register_blueprint(cancel_appts)
 app.register_blueprint(add_notes)
 app.register_blueprint(manage_email_sub)
 app.register_blueprint(schedule_appt)
+app.register_blueprint(get_avail_workers)
+app.register_blueprint(get_worker_slots)
+app.register_blueprint(appointment_images)
+app.register_blueprint(appointment_notes)
 app.register_blueprint(worker_avail)
 app.register_blueprint(manage_services)
 app.register_blueprint(approve_workers)

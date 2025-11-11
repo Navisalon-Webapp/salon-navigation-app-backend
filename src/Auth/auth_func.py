@@ -154,6 +154,8 @@ def insert_Worker(uid, data):
     insert uid into employee table
 
     insert uid and 3 into users_roles table
+    
+    insert expertise into employee_expertise table
     """
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
@@ -168,7 +170,24 @@ def insert_Worker(uid, data):
         cursor.execute("INSERT INTO employee (uid, bid) VALUES (%s, %s);",param)
     eid = cursor.lastrowid
     cursor.execute("INSERT INTO users_roles (uid, rid) VALUES (%s, %s);",[uid,3])
-    #Insert expertise into database
+    
+    # Insert expertise into database
+    if 'specialty' in data and data['specialty']:
+        # First check if the expertise exists
+        cursor.execute("SELECT exp_id FROM expertise WHERE expertise = %s;", [data['specialty']])
+        expertise_result = cursor.fetchone()
+        
+        if expertise_result:
+            # Expertise exists, use its exp_id
+            exp_id = expertise_result['exp_id']
+        else:
+            # Expertise doesn't exist, create it
+            cursor.execute("INSERT INTO expertise (expertise) VALUES (%s);", [data['specialty']])
+            exp_id = cursor.lastrowid
+        
+        # Link employee to expertise
+        cursor.execute("INSERT INTO employee_expertise (eid, exp_id) VALUES (%s, %s);", [eid, exp_id])
+    
     conn.commit()
     cursor.close()
     conn.close()

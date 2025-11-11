@@ -48,7 +48,7 @@ def get_appointment_details(aid):
             a.notes,
             s.name as service_name,
             s.price as service_price,
-            s.duration as service_duration,
+            s.durationMin as service_duration,
             u_employee.first_name as employee_first_name,
             u_employee.last_name as employee_last_name,
             u_customer.first_name as customer_first_name,

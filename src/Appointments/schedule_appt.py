@@ -28,7 +28,7 @@ def business_services(bid):
         return jsonify({"status": "Failure",
                         "message": "Error connecting to db"}), 500
     cur = conn.cursor(dictionary=True)
-    cur.execute("SELECT sid, name, price FROM services WHERE bid = %s", (bid,))
+    cur.execute("SELECT sid, name, price, durationMin FROM services WHERE bid = %s", (bid,))
     rows = cur.fetchall()
     cur.close()
     conn.close()
