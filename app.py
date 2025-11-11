@@ -4,7 +4,6 @@ from dotenv import load_dotenv
 from flask_cors import CORS
 import atexit
 from src.extensions import mail
-from src.Admin.health_moniter import health_monitor
 from src.Auth.signup import signup
 from src.Auth.signin import signin
 from src.Worker.appointments import appointments
@@ -28,10 +27,11 @@ from src.Promotions.create_promos import promotions
 from src.Clients.Clients_Review.Clients_Review_Workers import review_workers
 from src.ViewVisitHistory.owner_view_visit_history import visit_hist
 from src.Admin.metrics import metrics
-from src.Admin.uptime import uptime, on_shutdown
+from src.Admin.Uptime.uptime import uptime
 from src.Clients.Clients_Manage_Cart.clients_addto_cart import addto_cart
 from src.Clients.Clients_Manage_Cart.clients_view_cart import manage_cart
 from src.Clients.View_Loyal_Points.view_loyalty_points import view_lpoints
+from src.Admin.Uptime.service import Service
 
 
 
@@ -96,7 +96,10 @@ app.register_blueprint(uptime)
 
 app.config['SECRET_KEY']=os.getenv('SECRET_KEY')
 
-atexit.register(on_shutdown)
+service = Service()
+
+atexit.register(service.stop_monitoring)
+
 
 if __name__ == "__main__":
     app.app_context().push()
@@ -105,5 +108,5 @@ if __name__ == "__main__":
         if not scheduler.running:
             scheduler.start()
             print("Scheduler started successfully")
-    health_monitor.start_monitoring()
+            service.start()
     app.run(debug=True)
