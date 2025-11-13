@@ -1,5 +1,6 @@
 from flask import request, jsonify, Blueprint
 from flask_cors import CORS
+from src.extensions import scheduler
 import mysql.connector
 from helper.utils import get_curr_cid
 from flask_login import login_required
@@ -102,6 +103,16 @@ def manage_appt_reminder_subscription():
             cursor.close()
         if db:
             db.close()
+
+    if not appt:
+        jobs = scheduler.get_jobs()
+        for j in jobs:
+            job_id = j.id
+            split_id = job_id.split(":")
+            c = split_id[2]
+            if cid == c:
+                scheduler.remove_job(job_id)
+
     
     return jsonify({"message": "Appointment reminder email subscription preferences updated successfully."}), 200
         
