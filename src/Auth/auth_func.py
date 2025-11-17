@@ -30,13 +30,22 @@ def valid_email(email):
 
 def verify_email(email):
     """Check if email already exists in authenticate table"""
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT uid FROM authenticate where email =  %s limit 1;", [email])
-    result = cursor.fetchone()
-    conn.commit()
-    cursor.close()
-    conn.close()
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT uid FROM authenticate where email =  %s limit 1;", [email])
+        result = cursor.fetchone()
+    except mysql.connector.Error as e:
+        print(f"Database Error {e}")
+    except Exception as e:
+        print(f"Error {e}")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
     return False if result is None else True
 
 def verify_confirmPass(password, confirmPassword):
@@ -45,15 +54,23 @@ def verify_confirmPass(password, confirmPassword):
 
 def insert_address(data):
     """insert address in addresses table for business"""
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    param=[data['salonAddress'], data['salonCity'], data['salonState'], data['salonCountry'], data['salonZipCode']]
-    cursor.execute("INSERT INTO addresses (street, city, state, country, zip_code) VALUES (%s, %s, %s, %s, %s);",param)
-    aid = cursor.lastrowid
-    conn.commit()
-    cursor.close()
-    conn.close()
-    return aid
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        param=[data['salonAddress'], data['salonCity'], data['salonState'], data['salonCountry'], data['salonZipCode']]
+        cursor.execute("INSERT INTO addresses (street, city, state, country, zip_code) VALUES (%s, %s, %s, %s, %s);",param)
+        aid = cursor.lastrowid
+        conn.commit()
+        return aid
+    except mysql.connector.Error as e:
+        print(f"Database Error {e}")
+    except Exception as e:
+        print(f"Error {e}")
+    finally:
+        cursor.close()
+        conn.close()
 
 def new_salt():
     salt = secrets.token_hex(16)
@@ -92,8 +109,6 @@ def insert_Auth(firstName, lastName, email, password):
         cursor.execute("INSERT INTO authenticate (uid, email, pw_hash, salt) VALUES (%s, %s, %s, %s);", param)
 
         conn.commit()
-        cursor.close()
-        conn.close()
         return uid
     except Error as e:
         if conn:
@@ -112,15 +127,25 @@ def insert_Customer(uid):
 
     insert uid and 1 into users_roles table
     """
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("INSERT INTO customers (uid) VALUES (%s);",[uid])
-    cid = cursor.lastrowid
-    cursor.execute("INSERT INTO users_roles (uid, rid) VALUES (%s, %s);",[uid,1])
-    conn.commit()
-    cursor.close()
-    conn.close()
-    return cid
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("INSERT INTO customers (uid) VALUES (%s);",[uid])
+        cid = cursor.lastrowid
+        cursor.execute("INSERT INTO users_roles (uid, rid) VALUES (%s, %s);",[uid,1])
+        conn.commit()
+        return cid
+    except mysql.connector.Error as e:
+        print(f"Database Error {e}")
+    except Exception as e:
+        print(f"Error {e}")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
 def insert_Owner(uid, data):
     """return bid
@@ -131,18 +156,32 @@ def insert_Owner(uid, data):
 
     insert uid and 2 into users_roles table
     """
-    aid = insert_address(data)
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("UPDATE users SET phone = %s WHERE uid = %s;", [data['phoneNumber'], uid])
-    param = [uid, data['salonName'], aid]
-    cursor.execute("INSERT INTO business (uid, name, aid) VALUES (%s, %s, %s);",param)
-    bid = cursor.lastrowid
-    cursor.execute("INSERT INTO users_roles (uid, rid) VALUES (%s, %s);",[uid,2])
-    conn.commit()
-    cursor.close()
-    conn.close()
-    return bid
+    conn =  None
+    cursor = None
+    try:
+        aid = insert_address(data)
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("UPDATE users SET phone = %s WHERE uid = %s;", [data['phoneNumber'], uid])
+        param = [uid, data['salonName'], aid]
+        cursor.execute("INSERT INTO business (uid, name, aid) VALUES (%s, %s, %s);",param)
+        bid = cursor.lastrowid
+        cursor.execute("INSERT INTO users_roles (uid, rid) VALUES (%s, %s);",[uid,2])
+        conn.commit()
+        return bid
+    except mysql.connector.Error as e:
+        if conn:
+            conn.rollback()
+        print(f"Database Error {e}")
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"Error {e}")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
 def insert_Worker(uid, data):
     """return eid
@@ -157,57 +196,89 @@ def insert_Worker(uid, data):
     
     insert expertise into employee_expertise table
     """
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("UPDATE users SET phone = %s WHERE uid = %s;", [data['phoneNumber'], uid])
-    cursor.execute("SELECT bid FROM business WHERE name = %s;", [data['salonName']])
-    result = cursor.fetchone()
-    param = [uid]
-    if(result is None):
-        cursor.execute("INSERT INTO employee (uid) VALUES (%s);",param)
-    else:
-        param += [result['bid']]
-        cursor.execute("INSERT INTO employee (uid, bid) VALUES (%s, %s);",param)
-    eid = cursor.lastrowid
-    cursor.execute("INSERT INTO users_roles (uid, rid) VALUES (%s, %s);",[uid,3])
-    
-    # Insert expertise into database
-    if 'specialty' in data and data['specialty']:
-        # First check if the expertise exists
-        cursor.execute("SELECT exp_id FROM expertise WHERE expertise = %s;", [data['specialty']])
-        expertise_result = cursor.fetchone()
-        
-        if expertise_result:
-            # Expertise exists, use its exp_id
-            exp_id = expertise_result['exp_id']
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("UPDATE users SET phone = %s WHERE uid = %s;", [data['phoneNumber'], uid])
+        cursor.execute("SELECT bid FROM business WHERE name = %s;", [data['salonName']])
+        result = cursor.fetchone()
+        param = [uid]
+        if(result is None):
+            cursor.execute("INSERT INTO employee (uid) VALUES (%s);",param)
         else:
-            # Expertise doesn't exist, create it
-            cursor.execute("INSERT INTO expertise (expertise) VALUES (%s);", [data['specialty']])
-            exp_id = cursor.lastrowid
+            param += [result['bid']]
+            cursor.execute("INSERT INTO employee (uid, bid) VALUES (%s, %s);",param)
+        eid = cursor.lastrowid
+        cursor.execute("INSERT INTO users_roles (uid, rid) VALUES (%s, %s);",[uid,3])
         
-        # Link employee to expertise
-        cursor.execute("INSERT INTO employee_expertise (eid, exp_id) VALUES (%s, %s);", [eid, exp_id])
-    
-    conn.commit()
-    cursor.close()
-    conn.close()
-    return eid
+        # Insert expertise into database
+        if 'specialty' in data and data['specialty']:
+            # First check if the expertise exists
+            cursor.execute("SELECT exp_id FROM expertise WHERE expertise = %s;", [data['specialty']])
+            expertise_result = cursor.fetchone()
+            
+            if expertise_result:
+                # Expertise exists, use its exp_id
+                exp_id = expertise_result['exp_id']
+            else:
+                # Expertise doesn't exist, create it
+                cursor.execute("INSERT INTO expertise (expertise) VALUES (%s);", [data['specialty']])
+                exp_id = cursor.lastrowid
+            
+            # Link employee to expertise
+            cursor.execute("INSERT INTO employee_expertise (eid, exp_id) VALUES (%s, %s);", [eid, exp_id])
+        
+        conn.commit()
+        return eid
+    except mysql.connector.Error as e:
+        print(f"Database Error {e}")
+    except Exception as e:
+        print(f"Error {e}")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
 def insert_Admin(uid):
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("INSERT INTO users_roles (uid, rid) VALUES (%s, %s);",[uid,4])
-    conn.commit()
-    cursor.close()
-    conn.close()
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("INSERT INTO users_roles (uid, rid) VALUES (%s, %s);",[uid,4])
+        conn.commit()
+    except mysql.connector.Error as e:
+        print(f"Error {e}")
+    except Exception as e:
+        print(f"Error {e}")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
 #sign in functions
 def get_Auth(email):
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM authenticate WHERE email = %s", [email])
-    result = cursor.fetchone()
-    return result
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM authenticate WHERE email = %s", [email])
+        result = cursor.fetchone()
+        return result
+    except mysql.connector.Error as e:
+        print(f"Database Error {e}")
+    except Exception as e:
+        print(f"Error {e}")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
 def verify_pass(email, password):
     auth = get_Auth(email)
@@ -219,35 +290,81 @@ def verify_pass(email, password):
 
     
 def get_uid(email):
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT uid FROM authenticate WHERE email = %s", [email])
-    result = cursor.fetchone()
-    return result
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT uid FROM authenticate WHERE email = %s", [email])
+        result = cursor.fetchone()
+        return result
+    except mysql.connector.Error as e:
+        print(f"Database Error {e}")
+    except Exception as e:
+        print(f"Error {e}")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
 def get_user_info(uid):
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute(query_user_info,[uid])
-    result = cursor.fetchone()
-    return result
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(query_user_info,[uid])
+        result = cursor.fetchone()
+        return result
+    except mysql.connector.Error as e:
+        print(f"Database Error {e}")
+    except Exception as e:
+        print(f"Error {e}")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
 def get_role(uid):
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT name FROM roles LEFT JOIN users_roles ON roles.rid=users_roles.rid WHERE uid = %s", [uid])
-    result = cursor.fetchone()
-    return result
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT name FROM roles LEFT JOIN users_roles ON roles.rid=users_roles.rid WHERE uid = %s", [uid])
+        result = cursor.fetchone()
+        return result
+    except mysql.connector.Error as e:
+        print(f"Database Error {e}")
+    except Exception as e:
+        print(f"Error {e}")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
 def create_email_sub(cid):
     if not cid:
         print ("no uid")
         return
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("INSERT INTO email_subscription (cid, promotion, appointment) VALUES (%s, true, true)",[cid])
-    id = cursor.lastrowid
-    conn.commit()
-    cursor.close()
-    conn.close()
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("INSERT INTO email_subscription (cid, promotion, appointment) VALUES (%s, true, true)",[cid])
+        id = cursor.lastrowid
+        conn.commit()
+    except mysql.connector.Error as e:
+        print(f"Database Error {e}")
+    except Exception as e:
+        print(f"Error {e}")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
     # return id
