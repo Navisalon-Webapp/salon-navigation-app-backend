@@ -51,3 +51,9 @@ from (
 	) sub
 where month(sub.start) <= %s and year(sub.start) <= %s;
 """
+
+query_customer_satisfaction = """
+select avg(rating)
+from salon_app.reviews
+where bid=%s;
+"""

@@ -69,6 +69,12 @@ def retention_rate():
     bid:int = data['bid'] if data['bid'] else None
     month:int = data['month'] if data['month'] else None
     year:int = data['year'] if data['month'] else None
+    if not bid or not month or not year:
+        return jsonify({
+            "status":"failure",
+            "message":"missing parameters"
+        })
+    
     param = [bid, month, year]
     conn = None
     cursor = None
@@ -84,12 +90,14 @@ def retention_rate():
         cursor.execute(query_all_customers,param)
         result = cursor.fetchone()
         countAll = result[0]
+        retention_rate = (countAll-countNew)/countOld
         return jsonify({
             "status":"success",
             "message":"retrieved customer metrics",
             "old customers":countOld,
             "new customers":countNew,
-            "total customers":countAll
+            "total customers":countAll,
+            "retention-rate":retention_rate
         })
     except mysql.connector.Error as e:
         print(f"Database Error {e}")
@@ -111,4 +119,46 @@ def retention_rate():
         if conn:
             conn.close()
 
+@metrics.route('/customer-satisfaction', methods=['GET'])
+def customer_satisfaction():
+    data = request.get_json()
+    bid:int = data['bid'] if data['bid'] else None
+    if not bid:
+        return jsonify({
+            "status":"failure",
+            "message":"missing parameters"
+        })
+
+    conn = None
+    cursor = None
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(query_customer_satisfaction,[bid])
+        result = cursor.fetchone()
+        return jsonify({
+            "status":"success",
+            "message":"retrieved business average rating",
+            "customer satisfaction": result[0]
+        })
+    except mysql.connector.Error as e:
+        print(f"Database Error {e}")
+        return jsonify({
+            "status":"failure",
+            "message":"Database Error",
+            "error": str(e)
+        })
+    except Exception as e:
+        print(f"Database Error {e}")
+        return jsonify({
+            "status":"failure",
+            "message":"Error",
+            "error": str(e)
+        })
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
     
