@@ -4,10 +4,11 @@ from .queries import *
 from helper.utils import *
 from flask_login import current_user, login_required
 from mysql.connector import Error
+from datetime import datetime
 
 metrics = Blueprint("metrics",__name__,url_prefix='/admin')
 
-@metrics.route('/retention',methods=['GET'])
+@metrics.route('/retention', methods=['GET'])
 @login_required
 def get_retention_metrics():
     """Return list of int
@@ -55,4 +56,59 @@ def get_retention_metrics():
         if conn:
             cursor.close()
     
+@metrics.route('/retention-rate', methods=['GET'])
+@login_required
+def retention_rate():
+    if not check_role(current_user.id) == 'admin':
+        return jsonify({
+            "status":"failure",
+            "message":"unauthorized",
+        }), 403
+    
+    data = request.get_json()
+    bid:int = data['bid'] if data['bid'] else None
+    month:int = data['month'] if data['month'] else None
+    year:int = data['year'] if data['month'] else None
+    param = [bid, month, year]
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(query_new_customers,param)
+        result = cursor.fetchone()
+        countNew = result[0]
+        cursor.execute(query_old_customers,param)
+        result = cursor.fetchone()
+        countOld = result[0]
+        cursor.execute(query_all_customers,param)
+        result = cursor.fetchone()
+        countAll = result[0]
+        return jsonify({
+            "status":"success",
+            "message":"retrieved customer metrics",
+            "old customers":countOld,
+            "new customers":countNew,
+            "total customers":countAll
+        })
+    except mysql.connector.Error as e:
+        print(f"Database Error {e}")
+        return jsonify({
+            "status":"failure",
+            "message":"Database Error",
+            "error": str(e)
+        })
+    except Exception as e:
+        print(f"Database Error {e}")
+        return jsonify({
+            "status":"failure",
+            "message":"Error",
+            "error": str(e)
+        })
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
     
