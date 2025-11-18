@@ -73,7 +73,7 @@ def retention_rate():
         return jsonify({
             "status":"failure",
             "message":"missing parameters"
-        })
+        }), 400
     
     param = [bid, month, year]
     conn = None
@@ -98,21 +98,21 @@ def retention_rate():
             "new customers":countNew,
             "total customers":countAll,
             "retention-rate":retention_rate
-        })
+        }), 200
     except mysql.connector.Error as e:
         print(f"Database Error {e}")
         return jsonify({
             "status":"failure",
             "message":"Database Error",
             "error": str(e)
-        })
+        }), 500
     except Exception as e:
         print(f"Database Error {e}")
         return jsonify({
             "status":"failure",
             "message":"Error",
             "error": str(e)
-        })
+        }), 500
     finally:
         if cursor:
             cursor.close()
@@ -127,7 +127,7 @@ def customer_satisfaction():
         return jsonify({
             "status":"failure",
             "message":"missing parameters"
-        })
+        }), 400
 
     conn = None
     cursor = None
@@ -141,21 +141,21 @@ def customer_satisfaction():
             "status":"success",
             "message":"retrieved business average rating",
             "customer satisfaction": result[0]
-        })
+        }), 200
     except mysql.connector.Error as e:
         print(f"Database Error {e}")
         return jsonify({
             "status":"failure",
             "message":"Database Error",
             "error": str(e)
-        })
+        }), 500
     except Exception as e:
         print(f"Database Error {e}")
         return jsonify({
             "status":"failure",
             "message":"Error",
             "error": str(e)
-        })
+        }), 500
     finally:
         if cursor:
             cursor.close()
