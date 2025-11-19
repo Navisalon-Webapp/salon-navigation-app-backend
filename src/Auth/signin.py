@@ -2,6 +2,8 @@ from flask import Blueprint, request, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
 from .auth_func import  *
 from .User import User
+from src.Notifications.notification_func import send_password_reset
+from helper.utils import get_email
 
 signin = Blueprint("signin", __name__, url_prefix='')
 
@@ -70,6 +72,80 @@ def logout():
     return jsonify({
         'message': 'Logout successful'
     }), 200
+
+@signin.route('/password-reset/email', methods=['GET'])
+def reset_password_email():
+    data = request.get_json()
+    email = data['email'] if data['email'] else None
+
+    if not email:
+        print("Email required")
+        return jsonify({
+            "status":"failure",
+            "message":"missing parameters"
+        }), 400
+    if(valid_email(email) == False):
+        print("email is not valid")
+        return jsonify({
+            "status":"failure",
+            "message":"invalid email address",
+            "email": email
+        }), 400
+    if(verify_email(email) == False):
+        print("email does not exist")
+        return jsonify({
+            "status":"failure",
+            "message":"no account associated with email",
+            "email": data['email']
+        }), 401
+    uid = get_uid(email)
+    send_password_reset(email, uid['uid'])
+    return jsonify({
+        "status":"success",
+        "message":"password reset link sent",
+        "recipient":email
+    }), 200
+
+@signin.route('/password-reset', methods=['POST'])
+def reset_password():
+    data = request.get_json()
+    uid = data['uid'] if data['uid'] else None
+    password = data['password'] if data['password'] else None
+    confirmPassword = data['confirmPassword'] if data['confirmPassword'] else None
+
+    if not password or not confirmPassword or not uid:
+        print("Missing parameters")
+        return jsonify({
+            "status":"failure",
+            "message":"missing parameters"
+        }), 400
+    email = get_email(uid)
+
+    if(verify_pass(email, password) == True):
+        print("Password is same as original")
+        return jsonify({
+            "status":"failure",
+            "message":"password must be different from current password"
+        }), 400
+    if(verify_confirmPass(data['password'],data['confirmPassword'])==False):
+        print("passwords do not match")
+        return jsonify({
+            "status": "failure",
+            "message": "passwords do not match",
+            "password": data['password'],
+            "confirmPassword": data['confirmPassword']
+        }), 400
+    update_pass(email, password)
+    return jsonify({
+        "status":"success",
+        "message":"password reset",
+        "email":email
+    }), 200
+    
+    
+
+    
+    
 
 @signin.route('/user-session', methods=['GET'])
 @login_required

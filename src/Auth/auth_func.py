@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 import mysql.connector
 from mysql.connector import Error
-from .queries import query_user_info
+from .queries import query_user_info, update_password
 import hashlib
 import secrets
 import re
@@ -286,6 +286,32 @@ def verify_pass(email, password):
         return False
     else:
         return True
+    
+def update_pass(email, password):
+    conn = None
+    cursor = None
+    
+    try:
+        salt = new_salt()
+        hash = hash_pass(password, salt)
+        param = [hash, salt, email]
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(update_password, param)
+        conn.commit()
+    except mysql.connector.Error as e:
+        if conn:
+            conn.rollback()
+        print(f"Database Error {e}")
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"Error {e}")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
     
 
     
