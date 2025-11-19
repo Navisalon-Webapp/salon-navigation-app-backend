@@ -92,6 +92,28 @@ def get_curr_eid():
     except Exception as e:
         conn.close()
         raise e
+    
+def get_bid_from_uid(uid):
+    if uid is None:
+        raise ValueError("Current user is not logged in")
+
+    conn = get_db_connection()
+    if conn is None:
+        raise ValueError("Database connection failed")
+
+    try:
+        cursor = conn.cursor(dictionary=True, buffered=True)
+        cursor.execute("SELECT bid FROM business WHERE uid = %s", [uid])
+        result = cursor.fetchone()
+        cursor.close()
+        conn.close()
+
+        if not result or result["bid"] is None:
+            raise ValueError("Businsess ID not found for current user")
+        return result["bid"]
+    except Exception as e:
+        conn.close()
+        raise e
 
 def check_role(uid):
     """return role of user"""

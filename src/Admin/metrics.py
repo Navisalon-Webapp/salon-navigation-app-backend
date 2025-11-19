@@ -28,7 +28,8 @@ def get_retention_metrics():
         }), 403
     
     data = request.get_json()
-    bid = data['bid']
+    uid = data['uid']
+    bid = get_bid_from_uid(uid)
 
     conn = None
     cursor = None
@@ -66,15 +67,17 @@ def retention_rate():
         }), 403
     
     data = request.get_json()
-    bid:int = data['bid'] if data['bid'] else None
+    uid:int = data['uid'] if data['uid'] else None
     month:int = data['month'] if data['month'] else None
     year:int = data['year'] if data['month'] else None
-    if not bid or not month or not year:
+    if not uid or not month or not year:
         return jsonify({
             "status":"failure",
             "message":"missing parameters"
         }), 400
     
+    bid = get_bid_from_uid(uid)
+
     param = [bid, month, year]
     conn = None
     cursor = None
@@ -87,16 +90,16 @@ def retention_rate():
         cursor.execute(query_old_customers,param)
         result = cursor.fetchone()
         countOld = result[0]
-        cursor.execute(query_all_customers,param)
+        cursor.execute(query_end_period,param)
         result = cursor.fetchone()
-        countAll = result[0]
-        retention_rate = (countAll-countNew)/countOld
+        countEnd = result[0]
+        retention_rate = (countEnd-countNew)/countOld
         return jsonify({
             "status":"success",
             "message":"retrieved customer metrics",
-            "old customers":countOld,
+            "start of period customers":countOld,
             "new customers":countNew,
-            "total customers":countAll,
+            "end of period customers":countEnd,
             "retention-rate":retention_rate
         }), 200
     except mysql.connector.Error as e:
@@ -122,12 +125,13 @@ def retention_rate():
 @metrics.route('/customer-satisfaction', methods=['GET'])
 def customer_satisfaction():
     data = request.get_json()
-    bid:int = data['bid'] if data['bid'] else None
-    if not bid:
+    uid:int = data['uid'] if data['uid'] else None
+    if not uid:
         return jsonify({
             "status":"failure",
             "message":"missing parameters"
         }), 400
+    bid = get_bid_from_uid(uid)
 
     conn = None
     cursor = None

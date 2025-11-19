@@ -40,16 +40,14 @@ where month(sub.start) < %s and year(sub.start) <= %s;
 """
 
 #count all customers of a business at end of period
-query_all_customers = """
+query_end_period = """
 select count(sub.cid)
 from (
-	select a.cid, min(a.start_time) start
-	from salon_app.appointments a 
-	join salon_app.services s on a.sid=s.sid 
-	where s.bid = %s
-	group by a.cid
-	) sub
-where month(sub.start) <= %s and year(sub.start) <= %s;
+	select distinct a.cid
+	from salon_app.appointments a
+	join salon_app.services s on a.sid=s.sid
+	where s.bid = %s and month(a.start_time) = %s and year(a.start_time) = %s
+	) sub;
 """
 
 query_customer_satisfaction = """
