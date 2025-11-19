@@ -105,3 +105,18 @@ def get_business_customers(bid):
     except Exception as e:
         conn.close()
         raise e
+    
+def send_password_reset(email, uid):
+    msg = Message(
+        subject = 'Password Reset',
+        sender = os.getenv('MAIL_USERNAME'),
+        recipients=[email]
+    )
+    msg.html = f"""
+    <p>Follow this link to reset your account password</p>
+    <p><a href="{os.getenv('FRONTEND')}pasword-reset/{uid}" style="color: blue; text-decoration: underline;">
+    Password Reset
+    </a></p>
+    """
+    mail.send(msg)
+
