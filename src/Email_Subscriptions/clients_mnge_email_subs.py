@@ -110,7 +110,7 @@ def manage_appt_reminder_subscription():
             job_id = j.id
             split_id = job_id.split(":")
             c = split_id[2]
-            if cid == c:
+            if str(cid) == c:
                 scheduler.remove_job(job_id)
 
     
