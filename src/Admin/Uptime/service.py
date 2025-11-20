@@ -1,15 +1,17 @@
 from mysql.connector import Error
 from helper.utils import get_db_connection
+from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import datetime
 import requests
+import string
 
 class Service():
     def __init__(self, app_url="http://localhost:5000"):
-        self.id = None
-        self.scheduler = None
-        self.running = None
-        self.app_url=app_url
-        self.job_added = False
+        self.id:int = None
+        self.scheduler:BackgroundScheduler = None
+        self.running:bool = None
+        self.app_url:string=app_url
+        self.job_added:bool = False
     
     def start(self):
         from src.extensions import scheduler
@@ -32,6 +34,15 @@ class Service():
                 conn.close()
 
         self.start_monitoring(scheduler)
+        
+    def remove_preexisting_jobs(self):
+        all_jobs = self.scheduler.get_jobs()
+        for j in all_jobs:
+            split_id = j.id.split(":")
+            if split_id[0] != 'Service':
+                continue
+            self.scheduler.remove_job(j.id)
+            print(f"Removed existing job Service:{j.id}")
 
 
     def update_uptime(self,health_status=True):
@@ -61,7 +72,7 @@ class Service():
                 conn.close()
         
     def health_check(self):
-        print(f"Health check at {datetime.now()}")
+        print(f"Health check at {datetime.now()}\nJob ID Service:{self.id}")
         
         try:
             response = requests.get(f"{self.app_url}/uptime/health", timeout=10)
@@ -98,17 +109,23 @@ class Service():
 
         try:
             try:
-                self.scheduler.remove_job(f"{self.id}")
-                print(f"Removed existing job: {self.id}")
+                self.remove_preexisting_jobs()
             except:
+                print("No jobs to remove")
                 pass
+
+            job_id = f"Service:{str(self.id)}"
+            if getattr(self.scheduler, "get_job", None) and self.scheduler.get_job(job_id):
+                print(f"Job {job_id} already exists - skipping add")
+                self.job_added = True
+                return
 
             self.scheduler.add_job(
                 func=self.health_check,
                 trigger='interval',
                 minutes=interval_minutes,
                 seconds=interval_seconds,
-                id=f"{self.id}",
+                id=f"Service:{self.id}",
                 replace_existing=True
             )
 

@@ -106,11 +106,11 @@ atexit.register(service.stop_monitoring)
 
 
 if __name__ == "__main__":
-    app.app_context().push()
-    from src.extensions import scheduler
-    with app.app_context():
-        if not scheduler.running:
-            scheduler.start()
-            print("Scheduler started successfully")
+    if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug:
+        from src.extensions import scheduler
+        with app.app_context():
+            if not scheduler.running:
+                scheduler.start()
+                print("Scheduler started successfully")
             service.start()
-    app.run(debug=True)
+    app.run(debug=True, use_reloader=False)
