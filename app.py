@@ -2,6 +2,7 @@ from flask import Flask
 import os
 from dotenv import load_dotenv
 from flask_cors import CORS
+import atexit
 from src.extensions import mail
 from src.Auth.signup import signup
 from src.Auth.signin import signin
@@ -30,9 +31,11 @@ from src.Promotions.create_promos import promotions
 from src.Clients.Clients_Review.Clients_Review_Workers import review_workers
 from src.ViewVisitHistory.owner_view_visit_history import visit_hist
 from src.Admin.metrics import metrics
+from src.Admin.Uptime.uptime import uptime
 from src.Clients.Clients_Manage_Cart.clients_addto_cart import addto_cart
 from src.Clients.Clients_Manage_Cart.clients_view_cart import manage_cart
 from src.Clients.View_Loyal_Points.view_loyalty_points import view_lpoints
+from src.Admin.Uptime.service import Service
 from src.Revenue.get_revenue import revenue
 from src.Clients.get_appointment import get_appointment
 
@@ -99,16 +102,23 @@ app.register_blueprint(metrics)
 app.register_blueprint(addto_cart)
 app.register_blueprint(manage_cart)
 app.register_blueprint(view_lpoints)
+app.register_blueprint(uptime)
 app.register_blueprint(revenue)
 app.register_blueprint(get_appointment)
 
 app.config['SECRET_KEY']=os.getenv('SECRET_KEY')
 
+service = Service()
+
+atexit.register(service.stop_monitoring)
+
+
 if __name__ == "__main__":
-    app.app_context().push()
-    from src.extensions import scheduler
-    with app.app_context():
-        if not scheduler.running:
-            scheduler.start()
-            print("Scheduler started successfully")
-    app.run(debug=True)
+    if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug:
+        from src.extensions import scheduler
+        with app.app_context():
+            if not scheduler.running:
+                scheduler.start()
+                print("Scheduler started successfully")
+            service.start()
+    app.run(debug=True, use_reloader=False)
