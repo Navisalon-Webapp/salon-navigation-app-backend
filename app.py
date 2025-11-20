@@ -38,6 +38,7 @@ from src.Clients.View_Loyal_Points.view_loyalty_points import view_lpoints
 from src.Admin.Uptime.service import Service
 from src.Revenue.get_revenue import revenue
 from src.Clients.get_appointment import get_appointment
+from src.Clients.appointment_deposit import deposit
 
 
 
@@ -105,6 +106,7 @@ app.register_blueprint(view_lpoints)
 app.register_blueprint(uptime)
 app.register_blueprint(revenue)
 app.register_blueprint(get_appointment)
+app.register_blueprint(deposit)
 
 app.config['SECRET_KEY']=os.getenv('SECRET_KEY')
 
