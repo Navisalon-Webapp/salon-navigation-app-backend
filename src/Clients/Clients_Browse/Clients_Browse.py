@@ -5,7 +5,7 @@ from mysql.connector import Error
 from dotenv import load_dotenv
 import os
 from flask_login import current_user, login_required
-
+from datetime import datetime
 
 load_dotenv()
 
@@ -125,7 +125,7 @@ def client_view_appoints():
     cursor = None
     try:
         db = get_db()
-        cursor = db.cursor()
+        cursor = db.cursor(dictionary=True, buffered=True)
         cid_query = "SELECT cid FROM customers WHERE uid = %s"
         cursor.execute(cid_query, (current_user.id,))
         cid_result = cursor.fetchone()
@@ -133,33 +133,58 @@ def client_view_appoints():
         if not cid_result:
             return jsonify({"error": "Customer not found"}), 404
         
-        cid = cid_result[0]
+        cid = cid_result['cid']
         
         query = """ 
-            select a.aid as appointment_id, s.name as service_name, s.price as service_price, u.first_name, 
-            u.last_name, e.eid as employee_id, a.start_time, a.expected_end_time, a.end_time
-            from appointments a
-            join employee e on a.eid = e.eid
-            join services s on a.sid = s.sid
-            join users u on e.uid = u.uid
+            SELECT a.aid as appointment_id, s.name as service_name, s.price as service_price, 
+            u.first_name, u.last_name, e.eid as employee_id, a.start_time, a.expected_end_time, 
+            a.end_time, s.durationMin
+            FROM appointments a
+            JOIN employee e ON a.eid = e.eid
+            JOIN services s ON a.sid = s.sid
+            JOIN users u ON e.uid = u.uid
             WHERE a.cid = %s AND a.start_time < NOW()
             ORDER BY a.start_time DESC
         """
 
         cursor.execute(query, (cid,))
         rows = cursor.fetchall()
-        appointments = [{"appointment_id": row[0], "service_name": row[1], 
-                    "service_price": row[2], "employee_first_name": row[3],
-                    "employee_last_name": row[4], "employee_id": row[5],
-                    "start_time": row[6], "expected_end_time": row[7],
-                    "end_time": row[8]
-                    } for row in rows]
-        return jsonify(appointments)
+        
+        formatted_appointments = []
+        for row in rows:
+            start_time = row.get('start_time')
+            if isinstance(start_time, datetime):
+                time_str = start_time.strftime('%I:%M %p')
+                date_str = start_time.strftime('%m/%d/%Y')
+                start_time_str = start_time.strftime('%Y-%m-%d %H:%M:%S')
+            else:
+                time_str = str(start_time)
+                date_str = ""
+                start_time_str = str(start_time)
+            
+            formatted_appointments.append({
+                "appointment_id": row['appointment_id'],
+                "service_name": row['service_name'],
+                "service_price": float(row['service_price']) if row['service_price'] else 0.0,
+                "employee_first_name": row['first_name'],
+                "employee_last_name": row['last_name'],
+                "employee_id": row['employee_id'],
+                "start_time": start_time_str,  # String format instead of datetime object
+                "time": time_str,
+                "date": date_str,
+                "expected_end_time": row['expected_end_time'].strftime('%Y-%m-%d %H:%M:%S') if row['expected_end_time'] else None,
+                "end_time": row['end_time'].strftime('%Y-%m-%d %H:%M:%S') if row['end_time'] else None,
+                "durationMins": row.get('durationMin', 60),
+                "status": "completed"
+            })
+        
+        return jsonify(formatted_appointments)
     except Exception as e:
+        print(f"[ERROR] Past appointments error: {e}")
         return jsonify({"error": str(e)}), 500
     finally:
         if cursor:
-            db.close()
+            cursor.close()
         if db:
             db.close()
 
@@ -173,7 +198,7 @@ def client_view_future_appoints():
     cursor = None
     try:
         db = get_db()
-        cursor = db.cursor()
+        cursor = db.cursor(dictionary=True, buffered=True)
         cid_query = "SELECT cid FROM customers WHERE uid = %s"
         cursor.execute(cid_query, (current_user.id,))
         cid_result = cursor.fetchone()
@@ -181,31 +206,104 @@ def client_view_future_appoints():
         if not cid_result:
             return jsonify({"error": "Customer not found"}), 404
         
-        cid = cid_result[0]
+        cid = cid_result['cid']
         
         query = """ 
-            select a.aid as appointment_id, s.name as service_name, s.price as service_price, u.first_name, 
-            u.last_name, e.eid as employee_id, a.start_time, a.expected_end_time, a.end_time
-            from appointments a
-            join employee e on a.eid = e.eid
-            join services s on a.sid = s.sid
-            join users u on e.uid = u.uid
+            SELECT a.aid as appointment_id, s.name as service_name, s.price as service_price, 
+            u.first_name, u.last_name, e.eid as employee_id, a.start_time, a.expected_end_time, 
+            a.end_time, s.durationMin
+            FROM appointments a
+            JOIN employee e ON a.eid = e.eid
+            JOIN services s ON a.sid = s.sid
+            JOIN users u ON e.uid = u.uid
             WHERE a.cid = %s AND a.start_time >= NOW()
             ORDER BY a.start_time ASC
         """
 
         cursor.execute(query, (cid,))
         rows = cursor.fetchall()
-        appointments = [{"appointment_id": row[0], "service_name": row[1], 
-                    "service_price": row[2], "employee_first_name": row[3],
-                    "employee_last_name": row[4], "employee_id": row[5],
-                    "start_time": row[6], "expected_end_time": row[7],
-                    "end_time": row[8]
-                    } for row in rows]
-        return jsonify(appointments)
+        
+        formatted_appointments = []
+        for row in rows:
+            start_time = row.get('start_time')
+            if isinstance(start_time, datetime):
+                time_str = start_time.strftime('%I:%M %p')
+                date_str = start_time.strftime('%m/%d/%Y')
+                start_time_str = start_time.strftime('%Y-%m-%d %H:%M:%S')
+            else:
+                time_str = str(start_time)
+                date_str = ""
+                start_time_str = str(start_time)
+            
+            formatted_appointments.append({
+                "appointment_id": row['appointment_id'],
+                "service_name": row['service_name'],
+                "service_price": float(row['service_price']) if row['service_price'] else 0.0,
+                "employee_first_name": row['first_name'],
+                "employee_last_name": row['last_name'],
+                "employee_id": row['employee_id'],
+                "start_time": start_time_str,  # String format instead of datetime object
+                "time": time_str,
+                "date": date_str,
+                "expected_end_time": row['expected_end_time'].strftime('%Y-%m-%d %H:%M:%S') if row['expected_end_time'] else None,
+                "end_time": row['end_time'].strftime('%Y-%m-%d %H:%M:%S') if row['end_time'] else None,
+                "durationMins": row.get('durationMin', 60),
+                "status": "scheduled"
+            })
+        
+        return jsonify(formatted_appointments)
     except Exception as e:
         print(f"[ERROR] Future appointments error: {e}")
         return jsonify({"error": str(e)}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if db:
+            db.close()
+
+@client_browse.route("/api/client/business-info/<int:business_id>", methods=["GET"])
+@login_required
+def get_business_info(business_id):
+    db = None
+    cursor = None
+    
+    try:
+        db = get_db()
+        if db is None:
+            return jsonify({"message": "Could not connect to database."}), 500
+        
+        cursor = db.cursor(dictionary=True, buffered=True)
+        
+        business_query = """
+        SELECT b.name, a.street, a.city, a.state, 
+               a.country, a.zip_code, u.phone
+        FROM business b
+        JOIN addresses a ON b.aid = a.aid
+        JOIN users u ON b.uid = u.uid
+        WHERE b.bid = %s
+        """
+        cursor.execute(business_query, (business_id,))
+        business = cursor.fetchone()
+        
+        if not business:
+            return jsonify({"message": "Business not found."}), 404
+        
+        email_query = """
+        SELECT email
+        FROM authenticate
+        WHERE uid = (SELECT uid FROM business WHERE bid = %s)
+        """
+        cursor.execute(email_query, (business_id,))
+        email_result = cursor.fetchone()
+        
+        if email_result:
+            business['email'] = email_result['email']
+        
+        return jsonify(business), 200
+        
+    except mysql.connector.Error as err:
+        print(f"Error fetching business info: {err}")
+        return jsonify({"message": "Failed to fetch business info."}), 500
     finally:
         if cursor:
             cursor.close()

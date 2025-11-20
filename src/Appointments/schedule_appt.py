@@ -95,6 +95,21 @@ def create_appointment():
         expected_str = expected_dt.strftime("%Y-%m-%d %H:%M:%S")
 
         cur = conn.cursor(buffered=True)
+        
+        # Get service price and business ID
+        service_query = "SELECT price, bid FROM services WHERE sid = %s"
+        cur.execute(service_query, (sid,))
+        service_result = cur.fetchone()
+        
+        if not service_result:
+            cur.close()
+            conn.close()
+            return jsonify({"status": "failure", "message": "Service not found"}), 404
+        
+        service_price = float(service_result[0])
+        business_id = service_result[1]
+        
+        # Insert appointment
         insert_q = """
             INSERT INTO appointments (cid, eid, sid, start_time, expected_end_time, notes)
             VALUES (%s, %s, %s, %s, %s, %s)
@@ -102,6 +117,15 @@ def create_appointment():
         cur.execute(insert_q, (cid, eid, sid, start_str, expected_str, notes))
         conn.commit()
         new_aid = cur.lastrowid
+        
+        # Create transaction record for the appointment
+        transaction_query = """
+            INSERT INTO transactions (cid, bid, aid, amount)
+            VALUES (%s, %s, %s, %s)
+        """
+        cur.execute(transaction_query, (cid, business_id, new_aid, service_price))
+        conn.commit()
+        
         cur.close()
         conn.close()
 

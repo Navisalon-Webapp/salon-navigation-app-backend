@@ -71,13 +71,10 @@ def get_revenue():
         
         # Get today's revenue
         daily_query = """
-        SELECT COALESCE(SUM(s.price), 0) as daily_revenue
-        FROM appointments a
-        JOIN services s ON a.sid = s.sid
-        JOIN employee e ON a.eid = e.eid
-        WHERE e.bid = %s 
-        AND DATE(a.start_time) = CURDATE()
-        AND a.end_time IS NOT NULL
+        SELECT COALESCE(SUM(amount), 0) as daily_revenue
+        FROM transactions
+        WHERE bid = %s 
+        AND DATE(created_at) = CURDATE()
         """
         cursor.execute(daily_query, (bid,))
         daily_result = cursor.fetchone()
@@ -85,13 +82,10 @@ def get_revenue():
         
         # Get this week's revenue
         weekly_query = """
-        SELECT COALESCE(SUM(s.price), 0) as weekly_revenue
-        FROM appointments a
-        JOIN services s ON a.sid = s.sid
-        JOIN employee e ON a.eid = e.eid
-        WHERE e.bid = %s 
-        AND YEARWEEK(a.start_time, 1) = YEARWEEK(CURDATE(), 1)
-        AND a.end_time IS NOT NULL
+        SELECT COALESCE(SUM(amount), 0) as weekly_revenue
+        FROM transactions
+        WHERE bid = %s 
+        AND YEARWEEK(created_at, 1) = YEARWEEK(CURDATE(), 1)
         """
         cursor.execute(weekly_query, (bid,))
         weekly_result = cursor.fetchone()
@@ -99,14 +93,11 @@ def get_revenue():
         
         # Get this month's revenue
         monthly_query = """
-        SELECT COALESCE(SUM(s.price), 0) as monthly_revenue
-        FROM appointments a
-        JOIN services s ON a.sid = s.sid
-        JOIN employee e ON a.eid = e.eid
-        WHERE e.bid = %s 
-        AND MONTH(a.start_time) = MONTH(CURDATE())
-        AND YEAR(a.start_time) = YEAR(CURDATE())
-        AND a.end_time IS NOT NULL
+        SELECT COALESCE(SUM(amount), 0) as monthly_revenue
+        FROM transactions
+        WHERE bid = %s 
+        AND MONTH(created_at) = MONTH(CURDATE())
+        AND YEAR(created_at) = YEAR(CURDATE())
         """
         cursor.execute(monthly_query, (bid,))
         monthly_result = cursor.fetchone()
@@ -114,13 +105,10 @@ def get_revenue():
         
         # Get this year's revenue
         yearly_query = """
-        SELECT COALESCE(SUM(s.price), 0) as yearly_revenue
-        FROM appointments a
-        JOIN services s ON a.sid = s.sid
-        JOIN employee e ON a.eid = e.eid
-        WHERE e.bid = %s 
-        AND YEAR(a.start_time) = YEAR(CURDATE())
-        AND a.end_time IS NOT NULL
+        SELECT COALESCE(SUM(amount), 0) as yearly_revenue
+        FROM transactions
+        WHERE bid = %s 
+        AND YEAR(created_at) = YEAR(CURDATE())
         """
         cursor.execute(yearly_query, (bid,))
         yearly_result = cursor.fetchone()

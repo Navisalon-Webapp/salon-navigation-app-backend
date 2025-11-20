@@ -121,40 +121,79 @@ def view_cart():
 def alter_cart_item(cart_id):
     data = request.get_json()
     new_amount = data.get("amount")
-    if new_amount is None:
-        return jsonify({"message": "New amount is required."}), 400
+    if new_amount is None or new_amount < 0:
+        return jsonify({"message": "Valid amount is required."}), 400
 
     db = None
     cursor = None
     try:
-
         customer_id = get_cid()
         if customer_id is None:
             return jsonify({"message": "Could not retrieve customer ID."}), 500
         
         db = get_db()
-
         if db is None:
             print("Error: Could not establish connection to the database.")
             return jsonify({"message": "Could not connect to database."}), 500
         
-        
+        cursor = db.cursor(dictionary=True)
 
-        cursor = db.cursor(buffered=True)
-
-        query = """
-        update cart
-        set amount = %s
-        where cart_id = %s;
+        get_cart_query = """
+        SELECT c.pid, c.amount as current_amount, p.stock
+        FROM cart c
+        JOIN products p ON c.pid = p.pid
+        WHERE c.cart_id = %s AND c.cid = %s;
         """
-        cursor.execute(query, (new_amount, cart_id))
-        db.commit()
+        cursor.execute(get_cart_query, (cart_id, customer_id))
+        cart_item = cursor.fetchone()
 
-        if cursor.rowcount == 0:
+        if not cart_item:
             return jsonify({"message": "No cart item found with the given cart_id."}), 404
 
+        pid = cart_item['pid']
+        current_amount = cart_item['current_amount']
+        available_stock = cart_item['stock']
+        
+        amount_difference = new_amount - current_amount
+
+        if amount_difference > 0:
+            if available_stock < amount_difference:
+                return jsonify({"message": f"Insufficient stock. Only {available_stock} available."}), 400
+            
+            update_stock_query = """
+            UPDATE products
+            SET stock = stock - %s
+            WHERE pid = %s AND stock >= %s;
+            """
+            cursor.execute(update_stock_query, (amount_difference, pid, amount_difference))
+            
+            if cursor.rowcount == 0:
+                return jsonify({"message": "Failed to update stock. Insufficient stock available."}), 400
+
+        elif amount_difference < 0:
+            return_amount = abs(amount_difference)
+            
+            update_stock_query = """
+            UPDATE products
+            SET stock = stock + %s
+            WHERE pid = %s;
+            """
+            cursor.execute(update_stock_query, (return_amount, pid))
+
+        update_cart_query = """
+        UPDATE cart
+        SET amount = %s
+        WHERE cart_id = %s AND cid = %s;
+        """
+        cursor.execute(update_cart_query, (new_amount, cart_id, customer_id))
+
+        db.commit()
+
         return jsonify({"message": "Cart item updated successfully."}), 200
+        
     except mysql.connector.Error as err:
+        if db:
+            db.rollback()
         print(f"Error: Could not update cart item. : {err}")
         return jsonify({"message": "Could not update cart item."}), 500
     finally:
@@ -163,7 +202,6 @@ def alter_cart_item(cart_id):
         if db:
             db.close()
             
-       
 
 
 # Clients can checkout (clear cart)
@@ -172,7 +210,6 @@ def alter_cart_item(cart_id):
 def checkout():
     data = request.get_json()
     
-    # Get payment details (for now just validate they exist)
     required_fields = ["name", "email", "cardNumber", "expiry", "cvv"]
     missing_fields = [field for field in required_fields if not data.get(field)]
     if missing_fields:
@@ -189,19 +226,43 @@ def checkout():
         if db is None:
             return jsonify({"message": "Could not connect to database."}), 500
         
-        cursor = db.cursor(buffered=True)
+        cursor = db.cursor(dictionary=True, buffered=True)
         
-        # Get cart items to process
-        query = "SELECT cart_id FROM cart WHERE cid = %s"
+        query = """
+        SELECT c.cart_id, c.pid, c.amount, c.bid, p.price, p.stock, p.name
+        FROM cart c
+        JOIN products p ON c.pid = p.pid
+        WHERE c.cid = %s
+        """
         cursor.execute(query, (customer_id,))
         cart_items = cursor.fetchall()
         
         if not cart_items:
             return jsonify({"message": "Cart is empty."}), 400
         
-        # Clear the cart (in a real app, you'd create an order record first)
+        for item in cart_items:
+            update_stock_query = """
+            UPDATE products 
+            SET stock = stock - %s 
+            WHERE pid = %s
+            """
+            cursor.execute(update_stock_query, (item['amount'], item['pid']))
+            
+            transaction_amount = float(item['price']) * item['amount']
+            insert_transaction_query = """
+            INSERT INTO transactions (cid, bid, pid, amount)
+            VALUES (%s, %s, %s, %s)
+            """
+            cursor.execute(insert_transaction_query, (
+                customer_id,
+                item['bid'],
+                item['pid'],
+                transaction_amount
+            ))
+        
         delete_query = "DELETE FROM cart WHERE cid = %s"
         cursor.execute(delete_query, (customer_id,))
+        
         db.commit()
         
         return jsonify({
@@ -214,6 +275,44 @@ def checkout():
         if db:
             db.rollback()
         return jsonify({"message": "Could not process checkout."}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if db:
+            db.close()
+
+@manage_cart.route("/api/client/business-products/<int:business_id>", methods=["GET"])
+def get_business_products(business_id):
+    db = None
+    cursor = None
+    
+    try:
+        db = get_db()
+        if db is None:
+            return jsonify({"message": "Could not connect to database."}), 500
+        
+        cursor = db.cursor(dictionary=True, buffered=True)
+        
+        products_query = """
+        SELECT pid, name as product_name, description, price, stock, image
+        FROM products
+        WHERE bid = %s
+        ORDER BY name
+        """
+        cursor.execute(products_query, (business_id,))
+        products = cursor.fetchall()
+        
+        for product in products:
+            if product['price'] is not None:
+                product['price'] = float(product['price'])
+            if product['image'] is not None:
+                product['image'] = product['image'].decode('utf-8')
+        
+        return jsonify(products), 200
+        
+    except mysql.connector.Error as err:
+        print(f"Error fetching products: {err}")
+        return jsonify({"message": "Failed to fetch products."}), 500
     finally:
         if cursor:
             cursor.close()

@@ -96,7 +96,7 @@ def update_product(pid):
         
         stock = data["stock"]
         
-        product = get_product(pid)
+        product = get_product_by_id(pid)
         if not product:
             return jsonify({
                 "status": "failure",
@@ -147,7 +147,7 @@ def record_purchase(pid):
         
         quantity = data["quantity"]
         
-        product = get_product(pid)
+        product = get_product_by_id(id)
         if not product:
             return jsonify({
                 "status": "failure",
