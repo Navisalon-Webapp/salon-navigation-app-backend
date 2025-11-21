@@ -114,7 +114,7 @@ def send_password_reset(email, uid):
     )
     msg.html = f"""
     <p>Follow this link to reset your account password</p>
-    <p><a href="{os.getenv('FRONTEND')}pasword-reset/{uid}" style="color: blue; text-decoration: underline;">
+    <p><a href="{os.getenv('FRONTEND')}/password-reset/{uid}" style="color: blue; text-decoration: underline;">
     Password Reset
     </a></p>
     """

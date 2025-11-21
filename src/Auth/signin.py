@@ -73,7 +73,7 @@ def logout():
         'message': 'Logout successful'
     }), 200
 
-@signin.route('/password-reset/email', methods=['GET'])
+@signin.route('/password-reset/email', methods=['POST'])
 def reset_password_email():
     data = request.get_json()
     email = data['email'] if data['email'] else None
