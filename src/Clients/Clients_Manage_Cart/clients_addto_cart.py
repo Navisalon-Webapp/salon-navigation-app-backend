@@ -65,7 +65,6 @@ def get_cid():
 @addto_cart.route("/api/clients/manage-carts", methods=["POST"])
 @login_required #can only be accessed by logged in clients  
 def add_to_cart():
-    
     data = request.get_json()
 
     required_fields = ["pid","amount", "bid"]
@@ -78,11 +77,9 @@ def add_to_cart():
     amount = data.get("amount")
     business_id = data.get("bid")
     
-    
     missing_fields = [field for field in required_fields if data.get(field) is None]
     if missing_fields:
         return jsonify({"message": f"Missing required fields: {', '.join(missing_fields)}."}), 400
-    
     
     db = None
     cursor = None
@@ -92,7 +89,6 @@ def add_to_cart():
         if db is None:
             print("Error: Could not establish connection to the database.")
             return jsonify({"message": "Could not connect to database."}), 500
-        
         
         cursor = db.cursor()
 
@@ -106,12 +102,10 @@ def add_to_cart():
         if result is None:
             return jsonify({"message": "Product does not exist."}), 404
         stock, current_amt_in_cart = result
-        if stock < amount + current_amt_in_cart:
-            return jsonify({"message": "Insufficient stock available."}), 400
         
+        if stock <= 0:
+            return jsonify({"message": "Product is out of stock."}), 400
 
-
-        
         query = """
         insert into cart(cid, pid, amount, bid)
         values(%s, %s, %s, %s)
@@ -135,7 +129,6 @@ def add_to_cart():
             cursor.close()
         if db:
             db.close()
-
 
 #Clients can delete an item from their cart
 @addto_cart.route("/api/clients/manage-carts/delete-cart-item/<int:cart_id>", methods=["DELETE"])

@@ -56,6 +56,73 @@ def get_business_id():
         if db:
             db.close()
 
+@post_reviews.route("/api/client/get-reviews/<int:business_id>", methods=["GET"])
+def get_business_reviews_public(business_id):
+    db = None
+    cursor = None
+    
+    try:
+        db = get_db()
+        if db is None:
+            return jsonify({"message": "Could not connect to database."}), 500
+        
+        cursor = db.cursor(dictionary=True, buffered=True)
+        
+        # Get reviews with customer names
+        reviews_query = """
+        SELECT r.rvw_id, r.rating, r.comment, r.created_at,
+               u.first_name, u.last_name, r.cid
+        FROM reviews r
+        JOIN customers c ON r.cid = c.cid
+        JOIN users u ON c.uid = u.uid
+        WHERE r.bid = %s
+        ORDER BY r.created_at DESC
+        """
+        cursor.execute(reviews_query, (business_id,))
+        reviews = cursor.fetchall()
+        
+        # For each review, get replies
+        for review in reviews:
+            replies_query = """
+            SELECT rr.comment, rr.created_at, u.first_name, u.last_name
+            FROM review_replies rr
+            JOIN users u ON rr.uid = u.uid
+            WHERE rr.rvw_id = %s
+            ORDER BY rr.created_at DESC
+            LIMIT 1
+            """
+            cursor.execute(replies_query, (review['rvw_id'],))
+            reply = cursor.fetchone()
+            
+            if reply:
+                review['reply'] = {
+                    'text': reply['comment'],
+                    'createdAt': reply['created_at'].isoformat() if reply['created_at'] else None,
+                    'ownerName': f"{reply['first_name']} {reply['last_name']}"
+                }
+            else:
+                review['reply'] = None
+        
+        # Format response
+        formatted_reviews = [{
+            'id': str(r['rvw_id']),
+            'reviewerName': f"{r['first_name']} {r['last_name']}",
+            'rating': r['rating'],
+            'comment': r['comment'],
+            'createdAt': r['created_at'].isoformat() if r['created_at'] else None,
+            'reply': r['reply']
+        } for r in reviews]
+        
+        return jsonify(formatted_reviews), 200
+        
+    except mysql.connector.Error as err:
+        print(f"Error fetching reviews: {err}")
+        return jsonify({"message": "Failed to fetch reviews."}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if db:
+            db.close()
 
 # Get reviews for a business with replies
 @post_reviews.route("/api/owner/get-business-reviews", methods=["GET"])
