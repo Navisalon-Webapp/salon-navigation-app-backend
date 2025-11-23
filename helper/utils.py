@@ -132,6 +132,25 @@ def check_role(uid):
         if conn:
             conn.close()
         raise e
+
+def check_role():
+    """return role of user"""
+    uid = getattr(current_user, "id", None)
+    conn = get_db_connection()
+    if conn is None:
+        raise ValueError("Database connection failed")
+
+    try:
+        cursor = conn.cursor(dictionary=True, buffered=True)
+        cursor.execute(query_user_role,[uid])
+        role=cursor.fetchone()
+        cursor.close()
+        conn.close()
+        return role['name']
+    except Exception as e:
+        if conn:
+            conn.close()
+        raise e
     
 def get_email(uid):
     """return email of user"""
