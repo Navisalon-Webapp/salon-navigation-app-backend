@@ -41,7 +41,7 @@ from src.Clients.get_appointment import get_appointment
 from src.Clients.appointment_deposit import deposit
 from src.Clients.payment import payment
 from src.Clients.transactions import transaction
-
+from src.Owner.operation_time import operation
 
 
 
@@ -111,6 +111,7 @@ app.register_blueprint(get_appointment)
 app.register_blueprint(deposit)
 app.register_blueprint(payment)
 app.register_blueprint(transaction)
+app.register_blueprint(operation)
 
 app.config['SECRET_KEY']=os.getenv('SECRET_KEY')
 

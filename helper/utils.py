@@ -115,7 +115,7 @@ def get_bid_from_uid(uid):
         conn.close()
         raise e
 
-def check_role(uid):
+def checkrole(uid):
     """return role of user"""
     conn = get_db_connection()
     if conn is None:
