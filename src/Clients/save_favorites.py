@@ -73,10 +73,10 @@ def get_saved_employees():
         query_saved_businesses = """
             select e.eid, u.first_name, u.last_name, b.bid, e.approved
             from saved_employee se
-            join employee e on se.eid=e.eid,
-            join users u on e.uid=u.uid,
+            join employee e on se.eid=e.eid
+            join users u on e.uid=u.uid
             left join business b on e.bid=b.bid
-            where cid=%s;
+            where se.cid=%s;
         """
         cursor.execute(query_saved_businesses, [cid])
         results = cursor.fetchall()
@@ -129,6 +129,7 @@ def add_saved_business():
             values (%s, %s);
         """
         cursor.execute(insert_saved_business, [cid, bid])
+        conn.commit()
         return jsonify({
             "status":"success",
             "message":"added new saved business",
@@ -179,6 +180,7 @@ def add_saved_employee():
             values (%s, %s);
         """
         cursor.execute(insert_saved_employee, [cid, eid])
+        conn.commit()
         return jsonify({
             "status":"success",
             "message":"added new saved employee",
@@ -229,6 +231,7 @@ def remove_saved_busines():
             where cid=%s and bid=%s;
         """
         cursor.execute(delete_saved_business, [cid, bid])
+        conn.commit()
         return jsonify({
             "status":"success",
             "message":"removed saved business",
@@ -279,6 +282,7 @@ def remove_saved_employee():
             where cid=%s and eid=%s;
         """
         cursor.execute(delete_saved_employee, [cid, eid])
+        conn.commit()
         return jsonify({
             "status":"success",
             "message":"removed saved employee",
