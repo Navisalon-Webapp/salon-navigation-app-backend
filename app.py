@@ -43,6 +43,7 @@ from src.Clients.payment import payment
 from src.Clients.transactions import transaction
 from src.Owner.operation_time import operation
 from src.Clients.save_favorites import saved_favorites
+from src.Worker.profile import profile
 
 
 
@@ -114,6 +115,7 @@ app.register_blueprint(payment)
 app.register_blueprint(transaction)
 app.register_blueprint(operation)
 app.register_blueprint(saved_favorites)
+app.register_blueprint(profile)
 
 app.config['SECRET_KEY']=os.getenv('SECRET_KEY')
 
