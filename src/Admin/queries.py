@@ -71,7 +71,7 @@ FROM loyalty_programs;
 query_client_prog_percent = """
 SELECT
 ROUND((COUNT(DISTINCT clb.cid) / (SELECT COUNT(*) FROM customers)) * 100, 2) AS percent_participating
-FROM customer_loyalty_balance clb;
+FROM customer_loyalty_points clb;
 """
 
 query_average_saved = """
@@ -161,20 +161,20 @@ ORDER BY month;
 """
 
 query_rev_by_src = """
-SELECT 'Appointments' AS source, SUM(t.amount) AS revenue
-FROM transactions t
-WHERE t.aid IS NOT NULL
+SELECT 'Appointments' AS source, SUM(amount) AS revenue
+FROM transactions
+WHERE aid IS NOT NULL
 UNION ALL
-SELECT 'Products', SUM(tp.amount * p.price)
-FROM transactions_products tp
-JOIN products p ON tp.pid = p.pid;
+SELECT 'Products', SUM(amount) AS revenue
+FROM transactions
+WHERE pid IS NOT NULL;
 """
 
 query_top_services = """
 SELECT sc.name, SUM(t.amount) AS revenue
 FROM transactions t
 JOIN appointments a ON t.aid = a.aid
-JOIN services s ON a.serv_id = s.serv_id
+JOIN services s ON a.sid = s.sid
 JOIN service_categories sc ON s.cat_id = sc.cat_id
 GROUP BY sc.name
 ORDER BY revenue DESC
@@ -205,7 +205,7 @@ FROM appointments;
 query_appt_by_service = """
 SELECT sc.name, COUNT(*) AS appt_count
 FROM appointments a
-JOIN services s ON a.serv_id = s.serv_id
+JOIN services s ON a.sid = s.sid
 JOIN service_categories sc ON s.cat_id = sc.cat_id
 GROUP BY sc.name;
 """
@@ -216,12 +216,12 @@ FROM appointments
 GROUP BY DAYNAME(start_time)
 ORDER BY
 	CASE day
-		WHEN 'monday' THEN 1
-		WHEN 'tuesday' THEN 2
-		WHEN 'wednesday' THEN 3
-		WHEN 'thursday' THEN 4
-		WHEN 'friday' THEN 5
-		WHEN 'saturday' THEN 6
+		WHEN 'Monday' THEN 1
+		WHEN 'Tuesday' THEN 2
+		WHEN 'Wednesday' THEN 3
+		WHEN 'Thursday' THEN 4
+		WHEN 'Friday' THEN 5
+		WHEN 'Saturday' THEN 6
 		ELSE 7
 	END,
 	day ASC;
