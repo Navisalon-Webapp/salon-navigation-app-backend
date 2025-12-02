@@ -11,7 +11,7 @@ metrics = Blueprint("metrics",__name__,url_prefix='/admin')
 @metrics.route('/retention', methods=['GET'])
 @login_required
 def get_retention_metrics():
-    if not check_role(current_user.id) == 'admin':
+    if not check_role() == 'admin':
         return jsonify({
             "status":"failure",
             "message":"unauthorized",
@@ -44,7 +44,7 @@ def get_retention_metrics():
 @metrics.route('/retention-rate', methods=['GET'])
 @login_required
 def retention_rate():
-    if not check_role(current_user.id) == 'admin':
+    if not check_role() == 'admin':
         return jsonify({
             "status":"failure",
             "message":"unauthorized",
@@ -153,7 +153,7 @@ def customer_satisfaction():
 @metrics.route('/total-active-users',methods=['GET'])
 @login_required
 def get_total_active_users():
-    if not check_role(current_user.id) == 'admin':
+    if not check_role() == 'admin':
         return jsonify({
             "status":"failure",
             "message":"unauthorized",
@@ -185,7 +185,7 @@ def get_total_active_users():
 @metrics.route('/salons-explored',methods=['GET'])
 @login_required
 def get_salons_explored():
-    if not check_role(current_user.id) == 'admin':
+    if not check_role() == 'admin':
         return jsonify({
             "status":"failure",
             "message":"unauthorized",
@@ -216,7 +216,7 @@ def get_salons_explored():
 @metrics.route('/salon-views',methods=['GET'])
 @login_required
 def get_salon_views():
-    if not check_role(current_user.id) == 'admin':
+    if not check_role() == 'admin':
         return jsonify({
             "status":"failure",
             "message":"unauthorized",
@@ -247,7 +247,7 @@ def get_salon_views():
 @metrics.route('/product-views',methods=['GET'])
 @login_required
 def get_product_views():
-    if not check_role(current_user.id) == 'admin':
+    if not check_role() == 'admin':
         return jsonify({
             "status":"failure",
             "message":"unauthorized",
@@ -278,7 +278,7 @@ def get_product_views():
 @metrics.route('/new-user-trend',methods=['GET'])
 @login_required
 def get_new_user_trend():
-    if not check_role(current_user.id) == 'admin':
+    if not check_role() == 'admin':
         return jsonify({
             "status":"failure",
             "message":"unauthorized",
@@ -309,7 +309,7 @@ def get_new_user_trend():
 @metrics.route('/active-user-roles',methods=['GET'])
 @login_required
 def get_active_user_roles():
-    if not check_role(current_user.id) == 'admin':
+    if not check_role() == 'admin':
         return jsonify({
             "status":"failure",
             "message":"unauthorized",
@@ -340,7 +340,7 @@ def get_active_user_roles():
 @metrics.route('/active-user-trend',methods=['GET'])
 @login_required
 def get_active_user_trend():
-    if not check_role(current_user.id) == 'admin':
+    if not check_role() == 'admin':
         return jsonify({
             "status":"failure",
             "message":"unauthorized",
@@ -371,7 +371,7 @@ def get_active_user_trend():
 @metrics.route('/total-programs',methods=['GET'])
 @login_required
 def get_total_programs():
-    if not check_role(current_user.id) == 'admin':
+    if not check_role() == 'admin':
         return jsonify({
             "status":"failure",
             "message":"unauthorized",
@@ -402,7 +402,7 @@ def get_total_programs():
 @metrics.route('/client-participation',methods=['GET'])
 @login_required
 def get_client_participation():
-    if not check_role(current_user.id) == 'admin':
+    if not check_role() == 'admin':
         return jsonify({
             "status":"failure",
             "message":"unauthorized",
@@ -432,7 +432,7 @@ def get_client_participation():
 @metrics.route('/average-saved',methods=['GET'])
 @login_required
 def get_average_saved():
-    if not check_role(current_user.id) == 'admin':
+    if not check_role() == 'admin':
         return jsonify({
             "status":"failure",
             "message":"unauthorized",
@@ -462,7 +462,7 @@ def get_average_saved():
 @metrics.route('/total-saved',methods=['GET'])
 @login_required
 def get_total_saved():
-    if not check_role(current_user.id) == 'admin':
+    if not check_role() == 'admin':
         return jsonify({
             "status":"failure",
             "message":"unauthorized",
@@ -492,7 +492,7 @@ def get_total_saved():
 @metrics.route('/prog-salon',methods=['GET'])
 @login_required
 def get_programs_by_salon():
-    if not check_role(current_user.id) == 'admin':
+    if not check_role() == 'admin':
         return jsonify({
             "status":"failure",
             "message":"unauthorized",
@@ -523,7 +523,7 @@ def get_programs_by_salon():
 @metrics.route('/prog-types',methods=['GET'])
 @login_required
 def get_program_types():
-    if not check_role(current_user.id) == 'admin':
+    if not check_role() == 'admin':
         return jsonify({
             "status":"failure",
             "message":"unauthorized",
@@ -555,7 +555,7 @@ def get_program_types():
 @metrics.route('/savings-trend',methods=['GET'])
 @login_required
 def get_savings_trend():
-    if not check_role(current_user.id) == 'admin':
+    if not check_role() == 'admin':
         return jsonify({
             "status":"failure",
             "message":"unauthorized",
@@ -586,7 +586,7 @@ def get_savings_trend():
 @metrics.route('/total-revenue',methods=['GET'])
 @login_required
 def get_total_revenue():
-    if not check_role(current_user.id) == 'admin':
+    if not check_role() == 'admin':
         return jsonify({
             "status":"failure",
             "message":"unauthorized",
@@ -616,7 +616,7 @@ def get_total_revenue():
 @metrics.route('/revenue-month',methods=['GET'])
 @login_required
 def get_revenue_month():
-    if not check_role(current_user.id) == 'admin':
+    if not check_role() == 'admin':
         return jsonify({
             "status":"failure",
             "message":"unauthorized",
@@ -646,7 +646,7 @@ def get_revenue_month():
 @metrics.route('/revenue-year',methods=['GET'])
 @login_required
 def get_revenue_year():
-    if not check_role(current_user.id) == 'admin':
+    if not check_role() == 'admin':
         return jsonify({
             "status":"failure",
             "message":"unauthorized",
@@ -676,7 +676,7 @@ def get_revenue_year():
 @metrics.route('/average-revenue',methods=['GET'])
 @login_required
 def get_average_revenue():
-    if not check_role(current_user.id) == 'admin':
+    if not check_role() == 'admin':
         return jsonify({
             "status":"failure",
             "message":"unauthorized",
@@ -706,7 +706,7 @@ def get_average_revenue():
 @metrics.route('/revenue-trend',methods=['GET'])
 @login_required
 def get_revenue_trend():
-    if not check_role(current_user.id) == 'admin':
+    if not check_role() == 'admin':
         return jsonify({
             "status":"failure",
             "message":"unauthorized",
@@ -737,7 +737,7 @@ def get_revenue_trend():
 @metrics.route('/revenue-source',methods=['GET'])
 @login_required
 def get_revenue_source():
-    if not check_role(current_user.id) == 'admin':
+    if not check_role() == 'admin':
         return jsonify({
             "status":"failure",
             "message":"unauthorized",
@@ -768,7 +768,7 @@ def get_revenue_source():
 @metrics.route('/top-services',methods=['GET'])
 @login_required
 def get_top_services():
-    if not check_role(current_user.id) == 'admin':
+    if not check_role() == 'admin':
         return jsonify({
             "status":"failure",
             "message":"unauthorized",
@@ -799,7 +799,7 @@ def get_top_services():
 @metrics.route('/reschedule',methods=['GET'])
 @login_required
 def get_reschedule_rate():
-    if not check_role(current_user.id) == 'admin':
+    if not check_role() == 'admin':
         return jsonify({
             "status":"failure",
             "message":"unauthorized",
@@ -830,7 +830,7 @@ def get_reschedule_rate():
 @metrics.route('/cancel',methods=['GET'])
 @login_required
 def get_cancel_rate():
-    if not check_role(current_user.id) == 'admin':
+    if not check_role() == 'admin':
         return jsonify({
             "status":"failure",
             "message":"unauthorized",
@@ -862,7 +862,7 @@ def get_cancel_rate():
 @metrics.route('/no-show',methods=['GET'])
 @login_required
 def get_no_show_rate():
-    if not check_role(current_user.id) == 'admin':
+    if not check_role() == 'admin':
         return jsonify({
             "status":"failure",
             "message":"unauthorized",
@@ -894,7 +894,7 @@ def get_no_show_rate():
 @metrics.route('/appt-service',methods=['GET'])
 @login_required
 def get_appt_by_service():
-    if not check_role(current_user.id) == 'admin':
+    if not check_role() == 'admin':
         return jsonify({
             "status":"failure",
             "message":"unauthorized",
@@ -927,7 +927,7 @@ def get_appt_by_service():
 @metrics.route('/appt-day',methods=['GET'])
 @login_required
 def get_appt_by_day():
-    if not check_role(current_user.id) == 'admin':
+    if not check_role() == 'admin':
         return jsonify({
             "status":"failure",
             "message":"unauthorized",
@@ -960,7 +960,7 @@ def get_appt_by_day():
 @metrics.route('/appt-time',methods=['GET'])
 @login_required
 def get_appt_by_time():
-    if not check_role(current_user.id) == 'admin':
+    if not check_role() == 'admin':
         return jsonify({
             "status":"failure",
             "message":"unauthorized",
@@ -993,7 +993,7 @@ def get_appt_by_time():
 @metrics.route('/appt-trend',methods=['GET'])
 @login_required
 def get_appt_trend():
-    if not check_role(current_user.id) == 'admin':
+    if not check_role() == 'admin':
         return jsonify({
             "status":"failure",
             "message":"unauthorized",
@@ -1026,7 +1026,7 @@ def get_appt_trend():
 @metrics.route('/income',methods=['GET'])
 @login_required
 def get_average_income():
-    if not check_role(current_user.id) == 'admin':
+    if not check_role() == 'admin':
         return jsonify({
             "status":"failure",
             "message":"unauthorized",
@@ -1056,7 +1056,7 @@ def get_average_income():
 @metrics.route('/salon-age',methods=['GET'])
 @login_required
 def get_average_salon_age():
-    if not check_role(current_user.id) == 'admin':
+    if not check_role() == 'admin':
         return jsonify({
             "status":"failure",
             "message":"unauthorized",
@@ -1086,7 +1086,7 @@ def get_average_salon_age():
 @metrics.route('/experience',methods=['GET'])
 @login_required
 def get_average_worker_experiences():
-    if not check_role(current_user.id) == 'admin':
+    if not check_role() == 'admin':
         return jsonify({
             "status":"failure",
             "message":"unauthorized",
@@ -1116,7 +1116,7 @@ def get_average_worker_experiences():
 @metrics.route('/gender',methods=['GET'])
 @login_required
 def get_gender_distribution():
-    if not check_role(current_user.id) == 'admin':
+    if not check_role() == 'admin':
         return jsonify({
             "status":"failure",
             "message":"unauthorized",
@@ -1147,7 +1147,7 @@ def get_gender_distribution():
 @metrics.route('/age',methods=['GET'])
 @login_required
 def get_age_distribution():
-    if not check_role(current_user.id) == 'admin':
+    if not check_role() == 'admin':
         return jsonify({
             "status":"failure",
             "message":"unauthorized",
@@ -1178,7 +1178,7 @@ def get_age_distribution():
 @metrics.route('/industry',methods=['GET'])
 @login_required
 def get_industry_distribution():
-    if not check_role(current_user.id) == 'admin':
+    if not check_role() == 'admin':
         return jsonify({
             "status":"failure",
             "message":"unauthorized",
