@@ -60,7 +60,7 @@ login_manager.login_view = "signin.getSignin"
 CORS(
     app,
     supports_credentials=True,
-    resources={r"/*": {"origins": ["http://localhost:5173"]}}
+    resources={r"/*": {"origins": ["http://localhost:5173", r"https://.*vercel\.app"]}}
 )
 
 app.config.update(
@@ -134,4 +134,5 @@ if __name__ == "__main__":
                 scheduler.start()
                 print("Scheduler started successfully")
             service.start()
-    app.run(debug=True, use_reloader=False)
+    port = int(os.getenv("PORT", "5000"))
+    app.run(host="0.0.0.0", port=port, debug=True)
