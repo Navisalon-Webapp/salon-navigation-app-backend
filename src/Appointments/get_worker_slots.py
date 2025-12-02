@@ -91,11 +91,14 @@ def get_available_slots(eid):
         current = datetime.combine(request_date, start_time)
         end = datetime.combine(request_date, finish_time)
         
+        # Generate slots - allow the last slot if it starts before end time
         while current < end:
             slot_start_time = current.time()
-            slot_end_time = (current + timedelta(minutes=service_duration)).time()
+            slot_end_dt = current + timedelta(minutes=service_duration)
+            slot_end_time = slot_end_dt.time()
             
-            if (current + timedelta(minutes=service_duration)) > end:
+            # Skip this slot if the appointment would end after worker's finish time
+            if slot_end_dt > end:
                 break
             
             slot_str = slot_start_time.strftime("%H:%M")

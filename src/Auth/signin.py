@@ -99,7 +99,14 @@ def reset_password_email():
             "email": data['email']
         }), 401
     uid = get_uid(email)
-    send_password_reset(email, uid['uid'])
+    email_sent = send_password_reset(email, uid['uid'])
+    
+    if not email_sent:
+        return jsonify({
+            "status":"failure",
+            "message":"Failed to send email. Email service is currently unavailable."
+        }), 503
+    
     return jsonify({
         "status":"success",
         "message":"password reset link sent",

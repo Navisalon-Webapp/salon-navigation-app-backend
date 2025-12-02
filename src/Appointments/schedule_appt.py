@@ -7,6 +7,7 @@ from src.Notifications.notification_func import *
 from helper.utils import *
 from datetime import datetime, timedelta
 from .app_func import  *
+import pytz
 
 schedule_appt = Blueprint("schedule_appt", __name__, url_prefix="/api")
 
@@ -67,7 +68,18 @@ def create_appointment():
         return jsonify({"status": "failure", "message": f"invalid start_time: {e}"}), 400
 
     # Check if the appointment time is in the past
-    if start_dt <= datetime.now():
+    # Use Eastern Time for comparison to handle timezone differences
+    eastern = pytz.timezone('US/Eastern')
+    now_eastern = datetime.now(eastern)
+    
+    # Make start_dt timezone-aware (assume it's in Eastern time from frontend)
+    if start_dt.tzinfo is None:
+        start_dt_eastern = eastern.localize(start_dt)
+    else:
+        start_dt_eastern = start_dt.astimezone(eastern)
+    
+    # Allow appointments up to 5 minutes in the past to account for slight clock differences
+    if start_dt_eastern < now_eastern - timedelta(minutes=5):
         return jsonify({"status": "failure", "message": "Cannot book appointments in the past"}), 400
 
     conn = get_db_connection()
@@ -132,9 +144,19 @@ def create_appointment():
         if check_appointment_subscription(cid):
             msg = create_appt_message(new_aid)
             email = current_user.email
-            run_time = start_dt - timedelta(days=1) 
-            if datetime.now() >= run_time:
-                run_time = datetime.now() + timedelta(seconds=10)
+            run_time = start_dt - timedelta(days=1)
+            
+            # Use Eastern timezone for scheduling
+            eastern = pytz.timezone('US/Eastern')
+            now_eastern = datetime.now(eastern)
+            
+            # Make run_time timezone-aware
+            if run_time.tzinfo is None:
+                run_time = eastern.localize(run_time)
+            
+            if now_eastern >= run_time:
+                run_time = now_eastern + timedelta(seconds=10)
+                
             scheduler.add_job(
                 func=lambda:send_reminder(msg, email),
                 trigger='date',
@@ -191,8 +213,16 @@ def employee_reschedule():
     except Exception as e:
         return jsonify({"status": "failure", "message": f"invalid start_time: {e}"}), 400
     
-    if start_time <= appt_details['start_time'] or start_time <= datetime.now():
-        return jsonify({"status": "failure", "message": f"invalid start_time: {e}"}), 400
+    # Use Eastern timezone for validation
+    eastern = pytz.timezone('US/Eastern')
+    now_eastern = datetime.now(eastern)
+    
+    # Make start_time timezone-aware
+    if start_time.tzinfo is None:
+        start_time = eastern.localize(start_time)
+    
+    if start_time <= appt_details['start_time'] or start_time <= now_eastern:
+        return jsonify({"status": "failure", "message": "invalid start_time: must be in the future"}), 400
     
     conn = get_db_connection()
     if conn is None:

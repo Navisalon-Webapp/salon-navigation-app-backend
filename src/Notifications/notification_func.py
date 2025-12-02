@@ -5,6 +5,7 @@ from src.extensions import mail
 from .queries import *
 from datetime import datetime
 from helper.utils import *
+import requests
 
 load_dotenv()
         
@@ -107,9 +108,63 @@ def get_business_customers(bid):
         raise e
     
 def send_password_reset(email, uid):
+    # Check if Mailgun is configured (works in both dev and production)
+    mailgun_api_key = os.getenv('MAILGUN_API_KEY')
+    mailgun_domain = os.getenv('MAILGUN_DOMAIN')
+    
+    if mailgun_api_key and mailgun_domain:
+        # Use Mailgun API
+        reset_link = f"{os.getenv('FRONTEND')}/password-reset/{uid}"
+        
+        # Always print the link for development/testing
+        print(f"\n{'='*60}")
+        print(f"PASSWORD RESET for {email}")
+        print(f"Reset link: {reset_link}")
+        print(f"{'='*60}\n")
+        
+        try:
+            response = requests.post(
+                f"https://api.mailgun.net/v3/{mailgun_domain}/messages",
+                auth=("api", mailgun_api_key),
+                data={
+                    "from": f"Navisalon <mailgun@{mailgun_domain}>",
+                    "to": [email],
+                    "subject": "Password Reset",
+                    "html": f"""
+                    <p>Follow this link to reset your account password</p>
+                    <p><a href="{reset_link}" style="color: blue; text-decoration: underline;">
+                    Password Reset
+                    </a></p>
+                    """
+                }
+            )
+            
+            if response.status_code == 200:
+                print(f"Password reset email sent to {email} via Mailgun")
+                return True
+            else:
+                print(f"Mailgun error: {response.status_code} - {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"Failed to send via Mailgun: {e}")
+            return False
+    
+    # Fallback: use Gmail SMTP if configured
+    mail_username = os.getenv('MAIL_USERNAME')
+    
+    if not mail_username:
+        # No email configured, just log the reset link
+        reset_link = f"{os.getenv('FRONTEND')}/password-reset/{uid}"
+        print(f"\n{'='*60}")
+        print(f"PASSWORD RESET REQUESTED for {email}")
+        print(f"Reset link: {reset_link}")
+        print(f"{'='*60}\n")
+        return True
+    
     msg = Message(
         subject = 'Password Reset',
-        sender = os.getenv('MAIL_USERNAME'),
+        sender = mail_username,
         recipients=[email]
     )
     msg.html = f"""
@@ -118,5 +173,10 @@ def send_password_reset(email, uid):
     Password Reset
     </a></p>
     """
-    mail.send(msg)
+    try:
+        mail.send(msg)
+        return True
+    except Exception as e:
+        print(f"Failed to send password reset email: {e}")
+        return False
 
