@@ -22,7 +22,7 @@ def get_saved_businesses():
         conn = get_db_connection()
         cursor = conn.cursor()
         query_saved_businesses = """
-            select b.bid, b.name
+            select sb.id, b.bid, b.name
             from saved_business sb
             join business b on sb.bid=b.bid
             where cid=%s;
@@ -70,15 +70,15 @@ def get_saved_employees():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        query_saved_businesses = """
-            select e.eid, u.first_name, u.last_name, b.bid, e.approved
+        query_saved_employee = """
+            select se.id, e.eid, u.first_name, u.last_name, b.bid, e.approved
             from saved_employee se
             join employee e on se.eid=e.eid
             join users u on e.uid=u.uid
             left join business b on e.bid=b.bid
             where se.cid=%s;
         """
-        cursor.execute(query_saved_businesses, [cid])
+        cursor.execute(query_saved_employee, [cid])
         results = cursor.fetchall()
         return jsonify({
             "status":"success",
