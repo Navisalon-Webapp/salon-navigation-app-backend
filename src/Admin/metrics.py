@@ -446,7 +446,7 @@ def get_average_saved():
         cursor = conn.cursor(dictionary=True)
         cursor.execute(query_average_saved)
         avg_saved = cursor.fetchone()
-        avg_saved_val = f"${round(avg_saved['avg_amount_saved_per_customer'], 2)}"
+        avg_saved_val = f"${round(avg_saved['avg_amount_saved_per_customer'] or 0, 2)}"
         return jsonify({"status":"success", "avg_saved":avg_saved_val})
     except Exception as e:
         return jsonify({
@@ -476,7 +476,7 @@ def get_total_saved():
         cursor = conn.cursor(dictionary=True)
         cursor.execute(query_tot_saved)
         tot_savings = cursor.fetchone()
-        tot_savings_val = f"${round(tot_savings['total_savings'], 2)}"
+        tot_savings_val = f"${round(tot_savings['total_savings'] or 0, 2)}"
         return jsonify({"status":"success", "total_savings":tot_savings_val})
     except Exception as e:
         return jsonify({
@@ -630,7 +630,7 @@ def get_revenue_month():
         cursor = conn.cursor(dictionary=True)
         cursor.execute(query_month_rev_change)
         rev = cursor.fetchone()
-        rev_month = round(rev['percent_change'], 2)
+        rev_month = round(rev['percent_change'] or 0, 2)
         return jsonify({"status":"success", "revenue_month_change":rev_month})
     except Exception as e:
         return jsonify({
@@ -660,7 +660,7 @@ def get_revenue_year():
         cursor = conn.cursor(dictionary=True)
         cursor.execute(query_year_rev_change)
         rev = cursor.fetchone()
-        rev_year = round(rev['percent_change'], 2)
+        rev_year = round(rev['percent_change'] or 0, 2)
         return jsonify({"status":"success", "revenue_year_change":rev_year})
     except Exception as e:
         return jsonify({
