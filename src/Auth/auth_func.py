@@ -100,7 +100,7 @@ def insert_Auth(firstName, lastName, email, password):
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        cursor.execute("INSERT INTO users (first_name, last_name) VALUES (%s, %s);",[firstName, lastName])
+        cursor.execute("INSERT INTO users (first_name, last_name, phone) VALUES (%s, %s);",[firstName, lastName])
         uid = cursor.lastrowid
 
         salt = new_salt()
@@ -133,6 +133,7 @@ def insert_Customer(uid):
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
+        cursor.execute("UPDATE users SET phone = %s WHERE uid = %s;", [data['phoneNumber'], uid])
         cursor.execute("INSERT INTO customers (uid) VALUES (%s);",[uid])
         cid = cursor.lastrowid
         cursor.execute("INSERT INTO users_roles (uid, rid) VALUES (%s, %s);",[uid,1])
