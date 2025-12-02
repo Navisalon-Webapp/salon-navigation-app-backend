@@ -63,12 +63,15 @@ CORS(
     resources={r"/*": {"origins": ["http://localhost:5173", "https://salon-navigation-app-frontend-hdhc.vercel.app", r"https://.*vercel\.app"]}}
 )
 
+# Detect if running in production (on Render)
+is_production = os.getenv("RENDER") is not None or os.getenv("PRODUCTION") == "true"
+
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SAMESITE="Lax",
-    SESSION_COOKIE_SECURE=False,
+    SESSION_COOKIE_SAMESITE="None" if is_production else "Lax",
+    SESSION_COOKIE_SECURE=True if is_production else False,
 )
- 
+
 app.config['MAIL_SERVER']='smtp.gmail.com'
 app.config['MAIL_PORT'] = 465
 app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
