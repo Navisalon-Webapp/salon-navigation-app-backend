@@ -1,0 +1,13 @@
+query_user_info = """
+select users.uid as uid, email, first_name, last_name, name 
+from salon_app.users 
+left join salon_app.authenticate on users.uid=authenticate.uid 
+left join salon_app.users_roles on users.uid=users_roles.uid 
+left join salon_app.roles on users_roles.rid=roles.rid 
+where users.uid = %s;"""
+
+update_password = """
+update authenticate
+set pw_hash = %s, salt = %s
+where email = %s;
+"""
