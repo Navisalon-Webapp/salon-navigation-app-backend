@@ -1,5 +1,4 @@
 from flask import request, jsonify, Blueprint
-from flask_cors import CORS
 import mysql.connector
 from dotenv import load_dotenv
 import os
@@ -80,26 +79,81 @@ def view_loyalty_points():
         if customer_id is None:
             return jsonify({"message": "Could not retrieve customer ID."}), 500
         
-        cursor = db.cursor(buffered=True)
+        cursor = db.cursor(dictionary=True, buffered=True)
 
         
         query = """
-        select b.bid, b.name, clp.pts_balance as points_balance
-        from customer_loyalty_points clp join business b on clp.bid = b.bid
-        where clp.cid = %s;
+        select b.bid,
+               b.name,
+               clp.pts_balance as points_balance,
+               lp.lprog_id,
+               lp.threshold,
+               lp.appts_thresh,
+               lp.pdct_thresh,
+               lp.points_thresh,
+               lp.price_thresh,
+               r.is_appt,
+               r.is_product,
+               r.is_price,
+               r.is_points,
+               r.is_discount,
+               r.rwd_value
+        from customer_loyalty_points clp
+        join business b on clp.bid = b.bid
+        left join loyalty_programs lp on lp.bid = clp.bid
+        left join rewards r on r.lprog_id = lp.lprog_id and r.bid = clp.bid
+        where clp.cid = %s
+        order by b.name, lp.lprog_id;
         """
         cursor.execute(query, (customer_id,))
         results = cursor.fetchall()
         loyalty_points = []
-        for (bid, name, points_balance) in results:
-            loyalty_points.append({
-                "id": f"s{bid}",
-                "bid": bid,
-                "name": name,
-                "points": float(points_balance) if points_balance else 0,
-                "goal": 100,
-                "address": ""
-            })
+        seen_bids = set()
+        reward_flags = [
+            ("is_appt", "Free Appointment"),
+            ("is_product", "Free Product"),
+            ("is_price", "Price Credit"),
+            ("is_points", "Bonus Points"),
+            ("is_discount", "Discount"),
+        ]
+        for row in results:
+            bid = row.get("bid")
+            name = row.get("name")
+            if bid is None:
+                continue
+            if bid in seen_bids:
+                continue
+            seen_bids.add(bid)
+            balance = float(row.get("points_balance") or 0)
+            threshold = row.get("threshold")
+            program_type = next(
+                (
+                    flag
+                    for flag, active in (
+                        ("appts_thresh", row.get("appts_thresh")),
+                        ("pdct_thresh", row.get("pdct_thresh")),
+                        ("points_thresh", row.get("points_thresh")),
+                        ("price_thresh", row.get("price_thresh")),
+                    )
+                    if active
+                ),
+                None,
+            )
+            active_reward = next((label for key, label in reward_flags if row.get(key)), None)
+            reward_value = row.get("rwd_value")
+            loyalty_points.append(
+                {
+                    "id": f"s{bid}",
+                    "bid": bid,
+                    "name": name,
+                    "points": balance,
+                    "goal": float(threshold) if threshold is not None else 100,
+                    "programType": program_type,
+                    "rewardType": active_reward,
+                    "rewardValue": float(reward_value) if reward_value is not None else None,
+                    "address": "",
+                }
+            )
         return jsonify(loyalty_points), 200
     except mysql.connector.Error as err:
         print(f"Error: Database query failed. : {err}")

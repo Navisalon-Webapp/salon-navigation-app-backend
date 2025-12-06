@@ -1,11 +1,12 @@
 from flask import jsonify, Blueprint
-from flask_cors import CORS
 import mysql.connector
 from mysql.connector import Error
 from dotenv import load_dotenv
 import os
 from flask_login import current_user, login_required
 from datetime import datetime
+
+from src.LoyaltyProgram.loyalty_service import award_points_for_visit
 
 load_dotenv()
 
@@ -138,7 +139,7 @@ def client_view_appoints():
         
         query = """ 
             SELECT a.aid as appointment_id, s.name as service_name, s.price as service_price, 
-            u.first_name, u.last_name, e.eid as employee_id, a.start_time, a.expected_end_time, 
+            s.bid as business_id, u.first_name, u.last_name, e.eid as employee_id, a.start_time, a.expected_end_time, 
             a.end_time, s.durationMin
             FROM appointments a
             JOIN employee e ON a.eid = e.eid
@@ -150,7 +151,24 @@ def client_view_appoints():
 
         cursor.execute(query, (cid,))
         rows = cursor.fetchall()
-        
+
+        for row in rows:
+            business_id = row.get('business_id')
+            if business_id is None:
+                continue
+            try:
+                award_points_for_visit(
+                    db,
+                    aid=row.get('appointment_id'),
+                    cid=cid,
+                    bid=business_id,
+                    amount=row.get('service_price'),
+                )
+            except mysql.connector.Error as err:
+                print(f"[WARN] Failed to award loyalty points for appointment {row.get('appointment_id')}: {err}")
+            except Exception as err:
+                print(f"[WARN] Unexpected error awarding loyalty points: {err}")
+
         formatted_appointments = []
         for row in rows:
             start_time = row.get('start_time')
