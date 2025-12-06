@@ -45,6 +45,7 @@ from src.Owner.operation_time import operation
 from src.Clients.save_favorites import saved_favorites
 from src.Worker.profile import profile
 from src.Salon.deposit import deposit_rate
+from src.Salon.appointments import business_appointments
 
 
 
@@ -118,6 +119,7 @@ app.register_blueprint(operation)
 app.register_blueprint(saved_favorites)
 app.register_blueprint(profile)
 app.register_blueprint(deposit_rate)
+app.register_blueprint(business_appointments)
 
 app.config['SECRET_KEY']=os.getenv('SECRET_KEY')
 
