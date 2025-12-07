@@ -69,6 +69,60 @@ def _ensure_tables(conn: mysql.connector.MySQLConnection) -> None:
         cursor.close()
 
 
+def _fetch_program_details(conn: mysql.connector.MySQLConnection, bid: int) -> Optional[Dict[str, object]]:
+    """Fetch the active loyalty configuration for a business."""
+
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute(
+            """
+            SELECT lp.threshold, lp.appts_thresh, lp.pdct_thresh, lp.points_thresh, lp.price_thresh,
+                   r.is_appt, r.is_product, r.is_price, r.is_points, r.is_discount, r.rwd_value
+            FROM loyalty_programs lp
+            LEFT JOIN rewards r ON r.lprog_id = lp.lprog_id AND r.bid = lp.bid
+            WHERE lp.bid = %s
+            ORDER BY lp.lprog_id DESC
+            LIMIT 1
+            """,
+            (bid,),
+        )
+        row = cursor.fetchone()
+    finally:
+        cursor.close()
+
+    if not row:
+        return None
+
+    program_type = None
+    if row.get("appts_thresh"):
+        program_type = "appts_thresh"
+    elif row.get("pdct_thresh"):
+        program_type = "pdct_thresh"
+    elif row.get("points_thresh"):
+        program_type = "points_thresh"
+    elif row.get("price_thresh"):
+        program_type = "price_thresh"
+
+    reward_type = None
+    for key, label in (
+        ("is_appt", "is_appt"),
+        ("is_product", "is_product"),
+        ("is_price", "is_price"),
+        ("is_points", "is_points"),
+        ("is_discount", "is_discount"),
+    ):
+        if row.get(key):
+            reward_type = label
+            break
+
+    return {
+        "program_type": program_type,
+        "threshold": row.get("threshold"),
+        "reward_type": reward_type,
+        "reward_value": row.get("rwd_value"),
+    }
+
+
 def calculate_points(amount: Optional[object], override: Optional[int] = None) -> int:
     if override is not None:
         return max(int(override), 0)
@@ -108,7 +162,14 @@ def award_points_for_visit(
     source: str = "visit",
 ) -> Dict[str, object]:
     _ensure_tables(conn)
-    awarded_points = calculate_points(amount, explicit_points)
+    program_details = _fetch_program_details(conn, bid) or {}
+    program_type = program_details.get("program_type")
+    if explicit_points is not None:
+        awarded_points = max(int(explicit_points), 0)
+    elif program_type == "appts_thresh":
+        awarded_points = 1
+    else:
+        awarded_points = calculate_points(amount, None)
     if awarded_points <= 0:
         balance = get_balance(conn, cid, bid)
         return {"awarded": False, "points": 0, "balance": float(balance)}

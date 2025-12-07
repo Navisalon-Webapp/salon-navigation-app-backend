@@ -103,7 +103,7 @@ def view_loyalty_points():
         left join loyalty_programs lp on lp.bid = clp.bid
         left join rewards r on r.lprog_id = lp.lprog_id and r.bid = clp.bid
         where clp.cid = %s
-        order by b.name, lp.lprog_id;
+        order by b.name, lp.lprog_id desc;
         """
         cursor.execute(query, (customer_id,))
         results = cursor.fetchall()
@@ -141,6 +141,14 @@ def view_loyalty_points():
             )
             active_reward = next((label for key, label in reward_flags if row.get(key)), None)
             reward_value = row.get("rwd_value")
+            if program_type == "appts_thresh" and threshold is not None:
+                try:
+                    goal_value = float(threshold)
+                except (TypeError, ValueError):
+                    goal_value = 0.0
+                display_balance = min(balance, goal_value if goal_value > 0 else balance)
+                balance = float(int(round(display_balance)))
+                threshold = goal_value
             loyalty_points.append(
                 {
                     "id": f"s{bid}",

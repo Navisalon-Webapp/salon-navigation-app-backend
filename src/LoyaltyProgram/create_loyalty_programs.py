@@ -36,7 +36,8 @@ def get_db():
 @loyalty_prog.route("/api/owner/create-loyalty-programs", methods=["POST"])
 @login_required
 def create_lprogs():
-    if check_role() != "owner":
+    role = check_role()
+    if role not in {"owner", "business", "admin"}:
         return jsonify({"message": "Only salon owners can configure loyalty programs."}), 403
     data = request.get_json()
 
@@ -98,7 +99,8 @@ def create_lprogs():
 @loyalty_prog.route("/api/owner/loyalty-programs", methods=["GET"])
 @login_required
 def list_loyalty_programs():
-    if check_role() != "owner":
+    role = check_role()
+    if role not in {"owner", "business", "admin"}:
         return jsonify({"message": "Only salon owners can view loyalty programs."}), 403
 
     try:
@@ -174,7 +176,8 @@ def list_loyalty_programs():
 @loyalty_prog.route("/api/owner/loyalty-programs/<int:lprog_id>", methods=["PUT"])
 @login_required
 def update_loyalty_program(lprog_id: int):
-    if check_role() != "owner":
+    role = check_role()
+    if role not in {"owner", "business", "admin"}:
         return jsonify({"message": "Only salon owners can update loyalty programs."}), 403
 
     data = request.get_json() or {}
@@ -269,7 +272,8 @@ def update_loyalty_program(lprog_id: int):
 @loyalty_prog.route("/api/owner/loyalty-programs/<int:lprog_id>", methods=["DELETE"])
 @login_required
 def delete_loyalty_program(lprog_id: int):
-    if check_role() != "owner":
+    role = check_role()
+    if role not in {"owner", "business", "admin"}:
         return jsonify({"message": "Only salon owners can delete loyalty programs."}), 403
 
     try:

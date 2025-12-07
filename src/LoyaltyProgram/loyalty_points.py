@@ -68,7 +68,7 @@ def earn_loyalty_points():
             current_cid = get_curr_cid()
             if current_cid != appointment_cid:
                 return jsonify({"status": "failure", "message": "appointment does not belong to current customer"}), 403
-        elif role not in {"owner", "employee", "admin"}:
+        elif role not in {"owner", "business", "employee", "admin"}:
             return jsonify({"status": "failure", "message": "user not authorized to award loyalty"}), 403
 
         result = award_points_for_visit(
