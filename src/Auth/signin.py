@@ -167,7 +167,7 @@ def get_user_session():
     elif role == 'business':
         payload['bid'] = get_curr_bid()
     elif role == 'employee':
-        payload['eid'] = get_curr_eid()
+        payload['employee_id'] = get_curr_eid()
     elif role == 'admin':
         pass
     else:
