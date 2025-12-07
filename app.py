@@ -2,7 +2,7 @@ from flask import Flask
 import os
 from dotenv import load_dotenv
 from flask_cors import CORS
-import atexit
+# import atexit
 from src.extensions import mail
 from src.Auth.signup import signup
 from src.Auth.signin import signin
@@ -123,9 +123,9 @@ app.register_blueprint(business_appointments)
 
 app.config['SECRET_KEY']=os.getenv('SECRET_KEY')
 
-service = Service()
+# service = Service()
 
-atexit.register(service.stop_monitoring)
+# atexit.register(service.stop_monitoring)
 
 
 if __name__ == "__main__":
@@ -135,6 +135,6 @@ if __name__ == "__main__":
             if not scheduler.running:
                 scheduler.start()
                 print("Scheduler started successfully")
-            service.start()
+            # service.start()
     port = int(os.getenv("PORT", "5000"))
     app.run(host="0.0.0.0", port=port, debug=True)
