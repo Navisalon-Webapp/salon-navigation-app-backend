@@ -115,6 +115,81 @@ def browse_workers():
             db.close()
 
 
+@client_browse.route("/api/client/business-workers/<int:business_id>", methods=["GET"])
+@login_required
+def get_business_workers(business_id: int):
+    query = """
+        SELECT e.eid,
+               u.first_name,
+               u.last_name,
+               GROUP_CONCAT(DISTINCT ex.expertise ORDER BY ex.expertise SEPARATOR ', ') AS expertise,
+               e.bio,
+               e.profile_picture,
+               e.approved
+        FROM employee e
+        JOIN users u ON e.uid = u.uid
+        LEFT JOIN employee_expertise ee ON e.eid = ee.eid
+        LEFT JOIN expertise ex ON ee.exp_id = ex.exp_id
+        WHERE e.bid = %s
+        GROUP BY e.eid, u.first_name, u.last_name, e.bio, e.profile_picture, e.approved
+        ORDER BY u.first_name, u.last_name
+    """
+
+    db = None
+    cursor = None
+    try:
+        db = get_db()
+        if db is None:
+            return jsonify({
+                "status": "failure",
+                "message": "Database connection failed"
+            }), 500
+
+        cursor = db.cursor(dictionary=True)
+        cursor.execute(query, (business_id,))
+        rows = cursor.fetchall()
+
+        workers = []
+        for row in rows:
+            picture = row.get("profile_picture")
+            if picture:
+                if isinstance(picture, bytes):
+                    picture = picture.decode("utf-8")
+                if not str(picture).startswith("data:image"):
+                    row["profile_picture"] = f"data:image/jpeg;base64,{picture}"
+                else:
+                    row["profile_picture"] = picture
+            else:
+                row["profile_picture"] = None
+
+            workers.append({
+                "employee_id": row["eid"],
+                "first_name": row["first_name"],
+                "last_name": row["last_name"],
+                "expertise": row.get("expertise"),
+                "bio": row.get("bio"),
+                "profile_picture": row.get("profile_picture"),
+                "approved": bool(row.get("approved")),
+            })
+
+        return jsonify(workers), 200
+    except Error as e:
+        return jsonify({
+            "status": "failure",
+            "message": f"Database Error {str(e)}"
+        }), 500
+    except Exception as e:
+        return jsonify({
+            "status": "failure",
+            "message": f"Error {str(e)}"
+        }), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if db:
+            db.close()
+
+
 
 
 

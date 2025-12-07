@@ -4,9 +4,8 @@ query_availability = "select * from salon_app.schedule where eid = %s"
 
 query_employee_images = """
     select id, picture, active
-    from employee_work_pictures p
-    join employee e on p.uid=e.uid
-    where e.eid=%s;
+    from employee_work_pictures
+    where eid=%s;
 """
 
 query_employee_info = """

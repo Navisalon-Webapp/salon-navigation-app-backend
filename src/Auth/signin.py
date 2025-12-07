@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
+from helper.utils import get_curr_eid
 from .auth_func import  *
 from .User import User
 from src.Notifications.notification_func import send_password_reset
@@ -51,12 +52,20 @@ def getSignin():
         )
         login_user(user, remember=False)
 
+        employee_id = None
+        if current_user.role == "employee":
+            try:
+                employee_id = str(get_curr_eid())
+            except Exception as e:
+                print(f"Failed to resolve employee id during signin: {e}")
+
         print("account verified")
         return jsonify({
             "status":"success",
             "message":"signed in",
             "User_ID": current_user.id,
-            "role": current_user.role
+            "role": current_user.role,
+            "employee_id": employee_id
         }), 200
     except Exception as e:
         print("error", e)
