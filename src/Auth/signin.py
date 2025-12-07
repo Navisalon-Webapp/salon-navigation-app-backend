@@ -163,11 +163,11 @@ def get_user_session():
     }
     role = current_user.role
     if role == 'customer':
-        payload['cid'] = get_curr_cid()
+        payload['customer_id'] = get_curr_cid()
     elif role == 'business':
-        payload['bid'] = get_curr_bid()
+        payload['business_id'] = get_curr_bid()
     elif role == 'employee':
-        payload['eid'] = get_curr_eid()
+        payload['employee_id'] = get_curr_eid()
     elif role == 'admin':
         pass
     else:
