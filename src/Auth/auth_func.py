@@ -15,6 +15,7 @@ def get_db_connection():
         connection = mysql.connector.connect(
             host=os.getenv('DB_HOST'),
             user=os.getenv('DB_USER'),
+            port=int(os.getenv("DB_PORT")),
             password=os.getenv('DB_PASSWORD'),
             database=os.getenv('DB_NAME')
         )
@@ -138,9 +139,13 @@ def insert_Customer(uid):
         conn.commit()
         return cid
     except mysql.connector.Error as e:
-        print(f"Database Error {e}")
+        if conn:
+            conn.rollback()
+        raise Exception(f"Database error: {str(e)}")
     except Exception as e:
-        print(f"Error {e}")
+        if conn:
+            conn.rollback()
+        raise Exception(f"Error creating customer: {str(e)}")
     finally:
         if cursor:
             cursor.close()
@@ -172,11 +177,11 @@ def insert_Owner(uid, data):
     except mysql.connector.Error as e:
         if conn:
             conn.rollback()
-        print(f"Database Error {e}")
+        raise Exception(f"Database error: {str(e)}")
     except Exception as e:
         if conn:
             conn.rollback()
-        print(f"Error {e}")
+        raise Exception(f"Error creating owner: {str(e)}")
     finally:
         if cursor:
             cursor.close()
@@ -233,9 +238,13 @@ def insert_Worker(uid, data):
         conn.commit()
         return eid
     except mysql.connector.Error as e:
-        print(f"Database Error {e}")
+        if conn:
+            conn.rollback()
+        raise Exception(f"Database error: {str(e)}")
     except Exception as e:
-        print(f"Error {e}")
+        if conn:
+            conn.rollback()
+        raise Exception(f"Error creating worker: {str(e)}")
     finally:
         if cursor:
             cursor.close()

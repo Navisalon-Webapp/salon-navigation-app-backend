@@ -20,6 +20,7 @@ def get_db():
         db = mysql.connector.connect(
             host=os.getenv("DB_HOST"),
             user=os.getenv("DB_USER"),
+            port=int(os.getenv("DB_PORT")),
             password=os.getenv("DB_PASSWORD"),
             database=os.getenv("DB_NAME")
             )
@@ -103,8 +104,9 @@ def add_to_cart():
             return jsonify({"message": "Product does not exist."}), 404
         stock, current_amt_in_cart = result
         
-        if stock <= 0:
-            return jsonify({"message": "Product is out of stock."}), 400
+        # Check if adding this amount would exceed available stock
+        if stock < (current_amt_in_cart + amount):
+            return jsonify({"message": f"Not enough stock. Available: {stock - current_amt_in_cart}"}), 400
 
         query = """
         insert into cart(cid, pid, amount, bid)
@@ -113,12 +115,7 @@ def add_to_cart():
         """
         cursor.execute(query, (customer_id, product_id, amount, business_id))
 
-        update_stock_q = """
-        UPDATE products
-        SET stock = stock - %s
-        WHERE pid = %s AND stock >= %s;
-        """
-        cursor.execute(update_stock_q, (amount, product_id, amount))
+        # Don't decrement stock when adding to cart - only at checkout
         db.commit()
         return jsonify({"message": "Product added to cart successfully."}), 201
     except mysql.connector.Error as err:
@@ -163,18 +160,8 @@ def delete_cart_item(cart_id):
         if item is None:
             return jsonify({"message": "Cart item not found."}), 404
 
-        pid = item['pid']
-        return_amount = item['amount']  
-
-
-        # "put item back on the shelf" by updating the stock in products table
-        update_stock_q = """
-        UPDATE products p
-        SET p.stock = p.stock + %s
-        WHERE p.pid = %s;
-        """   
-        cursor.execute(update_stock_q, (return_amount, pid))
-
+        # No need to restore stock since it was never decremented when adding to cart
+        
         # delete the item from cart
         delete_query = """
         delete from cart
@@ -183,7 +170,7 @@ def delete_cart_item(cart_id):
         cursor.execute(delete_query, (cart_id, customer_id))
 
         db.commit()
-        return jsonify({"message": "Cart item deleted successfully.Product stock updated to original amount."}), 200
+        return jsonify({"message": "Cart item deleted successfully."}), 200
     
     except mysql.connector.Error as err:
         print(f"Error: Could not delete cart item. : {err}")

@@ -25,11 +25,19 @@ def get_employee_profile(eid):
         try:
             cursor.execute(query_employee_info, [eid])
             info = cursor.fetchone()
-            if info['profile_picture']:
-                if isinstance(info['profile_picture'], bytes):
-                    info['profile_picture'] = f"data:image/jpeg;base64,{info['profile_picture'].decode('utf-8')}"
+            if not info:
+                print("Employee not found")
+                return jsonify({
+                    "status": "failure",
+                    "message": "employee not found"
+                }), 404
+
+            profile_picture = info.get('profile_picture')
+            if profile_picture:
+                if isinstance(profile_picture, bytes):
+                    info['profile_picture'] = f"data:image/jpeg;base64,{profile_picture.decode('utf-8')}"
                 else:
-                    info['profile_picture'] = f"data:image/jpeg;base64,{info['profile_picture']}"
+                    info['profile_picture'] = f"data:image/jpeg;base64,{profile_picture}"
         except mysql.connector.Error as e:
             print(f"Database Error {e}")
             return jsonify({

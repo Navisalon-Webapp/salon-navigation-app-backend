@@ -1,11 +1,12 @@
 from flask import jsonify, Blueprint
-from flask_cors import CORS
 import mysql.connector
 from mysql.connector import Error
 from dotenv import load_dotenv
 import os
 from flask_login import current_user, login_required
 from datetime import datetime
+
+from src.LoyaltyProgram.loyalty_service import award_points_for_visit
 
 load_dotenv()
 
@@ -19,6 +20,7 @@ def get_db():
         db = mysql.connector.connect(
             host=os.getenv("DB_HOST"),
             user=os.getenv("DB_USER"),
+            port=int(os.getenv("DB_PORT")),
             password=os.getenv("DB_PASSWORD"),
             database=os.getenv("DB_NAME")
             )
@@ -113,6 +115,81 @@ def browse_workers():
             db.close()
 
 
+@client_browse.route("/api/client/business-workers/<int:business_id>", methods=["GET"])
+@login_required
+def get_business_workers(business_id: int):
+    query = """
+        SELECT e.eid,
+               u.first_name,
+               u.last_name,
+               GROUP_CONCAT(DISTINCT ex.expertise ORDER BY ex.expertise SEPARATOR ', ') AS expertise,
+               e.bio,
+               e.profile_picture,
+               e.approved
+        FROM employee e
+        JOIN users u ON e.uid = u.uid
+        LEFT JOIN employee_expertise ee ON e.eid = ee.eid
+        LEFT JOIN expertise ex ON ee.exp_id = ex.exp_id
+        WHERE e.bid = %s
+        GROUP BY e.eid, u.first_name, u.last_name, e.bio, e.profile_picture, e.approved
+        ORDER BY u.first_name, u.last_name
+    """
+
+    db = None
+    cursor = None
+    try:
+        db = get_db()
+        if db is None:
+            return jsonify({
+                "status": "failure",
+                "message": "Database connection failed"
+            }), 500
+
+        cursor = db.cursor(dictionary=True)
+        cursor.execute(query, (business_id,))
+        rows = cursor.fetchall()
+
+        workers = []
+        for row in rows:
+            picture = row.get("profile_picture")
+            if picture:
+                if isinstance(picture, bytes):
+                    picture = picture.decode("utf-8")
+                if not str(picture).startswith("data:image"):
+                    row["profile_picture"] = f"data:image/jpeg;base64,{picture}"
+                else:
+                    row["profile_picture"] = picture
+            else:
+                row["profile_picture"] = None
+
+            workers.append({
+                "employee_id": row["eid"],
+                "first_name": row["first_name"],
+                "last_name": row["last_name"],
+                "expertise": row.get("expertise"),
+                "bio": row.get("bio"),
+                "profile_picture": row.get("profile_picture"),
+                "approved": bool(row.get("approved")),
+            })
+
+        return jsonify(workers), 200
+    except Error as e:
+        return jsonify({
+            "status": "failure",
+            "message": f"Database Error {str(e)}"
+        }), 500
+    except Exception as e:
+        return jsonify({
+            "status": "failure",
+            "message": f"Error {str(e)}"
+        }), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if db:
+            db.close()
+
+
 
 
 
@@ -137,7 +214,7 @@ def client_view_appoints():
         
         query = """ 
             SELECT a.aid as appointment_id, s.name as service_name, s.price as service_price, 
-            u.first_name, u.last_name, e.eid as employee_id, a.start_time, a.expected_end_time, 
+            s.bid as business_id, u.first_name, u.last_name, e.eid as employee_id, a.start_time, a.expected_end_time, 
             a.end_time, s.durationMin
             FROM appointments a
             JOIN employee e ON a.eid = e.eid
@@ -149,7 +226,24 @@ def client_view_appoints():
 
         cursor.execute(query, (cid,))
         rows = cursor.fetchall()
-        
+
+        for row in rows:
+            business_id = row.get('business_id')
+            if business_id is None:
+                continue
+            try:
+                award_points_for_visit(
+                    db,
+                    aid=row.get('appointment_id'),
+                    cid=cid,
+                    bid=business_id,
+                    amount=row.get('service_price'),
+                )
+            except mysql.connector.Error as err:
+                print(f"[WARN] Failed to award loyalty points for appointment {row.get('appointment_id')}: {err}")
+            except Exception as err:
+                print(f"[WARN] Unexpected error awarding loyalty points: {err}")
+
         formatted_appointments = []
         for row in rows:
             start_time = row.get('start_time')
