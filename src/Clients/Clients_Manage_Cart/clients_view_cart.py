@@ -243,15 +243,30 @@ def checkout():
         if not cart_items:
             return jsonify({"message": "Cart is empty."}), 400
         
+        # Validate stock availability before processing checkout
+        for item in cart_items:
+            if item['stock'] < item['amount']:
+                return jsonify({
+                    "message": f"Not enough stock for {item['name']}. Available: {item['stock']}, Requested: {item['amount']}"
+                }), 400
+        
         awards = []
 
         for item in cart_items:
+            # Decrement stock by the amount purchased
             update_stock_query = """
             UPDATE products 
             SET stock = stock - %s 
-            WHERE pid = %s
+            WHERE pid = %s AND stock >= %s
             """
-            cursor.execute(update_stock_query, (item['amount'], item['pid']))
+            cursor.execute(update_stock_query, (item['amount'], item['pid'], item['amount']))
+            
+            # Verify the stock was actually updated
+            if cursor.rowcount == 0:
+                db.rollback()
+                return jsonify({
+                    "message": f"Insufficient stock for {item['name']}. Please refresh and try again."
+                }), 400
             
             transaction_amount = float(item['price']) * item['amount']
             insert_transaction_query = """
