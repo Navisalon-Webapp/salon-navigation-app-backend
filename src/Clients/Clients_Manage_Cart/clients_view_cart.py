@@ -5,6 +5,8 @@ from dotenv import load_dotenv
 import os
 from flask_login import current_user, login_required
 
+from src.LoyaltyProgram.loyalty_service import award_points_for_visit
+
 
 load_dotenv()
 
@@ -241,6 +243,8 @@ def checkout():
         if not cart_items:
             return jsonify({"message": "Cart is empty."}), 400
         
+        awards = []
+
         for item in cart_items:
             update_stock_query = """
             UPDATE products 
@@ -260,11 +264,33 @@ def checkout():
                 item['pid'],
                 transaction_amount
             ))
+
+            awards.append(
+                {
+                    "bid": item['bid'],
+                    "amount": transaction_amount,
+                    "quantity": item.get('amount', 1),
+                }
+            )
         
         delete_query = "DELETE FROM cart WHERE cid = %s"
         cursor.execute(delete_query, (customer_id,))
         
         db.commit()
+
+        for award in awards:
+            try:
+                award_points_for_visit(
+                    db,
+                    aid=None,
+                    cid=customer_id,
+                    bid=award["bid"],
+                    amount=award["amount"],
+                    quantity=award.get("quantity"),
+                    source="product",
+                )
+            except Exception as err:
+                print(f"[WARN] Failed to award loyalty for product purchase: {err}")
         
         return jsonify({
             "message": "Order placed successfully! Come in store for pickup.",

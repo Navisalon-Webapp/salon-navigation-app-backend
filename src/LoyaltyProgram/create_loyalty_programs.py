@@ -82,6 +82,11 @@ def create_lprogs():
         values(%s,%s, %s, %s);
          """
         cursor.execute(query_rwd, (business_id, lprog_id, True, reward_value))
+
+        cursor.execute(
+            "UPDATE customer_loyalty_points SET pts_balance = 0 WHERE bid = %s",
+            (business_id,),
+        )
         db.commit()
         return jsonify({"message": "Loyalty program created successfully.", "lprog_id": lprog_id }), 201
     except mysql.connector.Error as err:
@@ -219,6 +224,34 @@ def update_loyalty_program(lprog_id: int):
         if db is None:
             return jsonify({"message": "Could not connect to database."}), 500
 
+        program_cursor = db.cursor(dictionary=True)
+        program_cursor.execute(
+            """
+            SELECT appts_thresh, pdct_thresh, points_thresh, price_thresh
+            FROM loyalty_programs
+            WHERE lprog_id = %s AND bid = %s
+            LIMIT 1
+            """,
+            (lprog_id, bid),
+        )
+        existing_program = program_cursor.fetchone()
+        program_cursor.close()
+
+        def _program_flag(row):
+            if not row:
+                return None
+            if row.get("appts_thresh"):
+                return "appts_thresh"
+            if row.get("pdct_thresh"):
+                return "pdct_thresh"
+            if row.get("points_thresh"):
+                return "points_thresh"
+            if row.get("price_thresh"):
+                return "price_thresh"
+            return None
+
+        original_prog_type = _program_flag(existing_program)
+
         cursor = db.cursor()
         updates = []
         params = []
@@ -255,6 +288,18 @@ def update_loyalty_program(lprog_id: int):
                     f"UPDATE rewards SET {', '.join(reward_updates)} WHERE lprog_id = %s AND bid = %s",
                     reward_params,
                 )
+
+        reset_balances = False
+        if prog_type:
+            reset_balances = original_prog_type is not None and original_prog_type != prog_type
+            if original_prog_type is None:
+                reset_balances = True
+
+        if reset_balances:
+            cursor.execute(
+                "UPDATE customer_loyalty_points SET pts_balance = 0 WHERE bid = %s",
+                (bid,),
+            )
 
         db.commit()
         return jsonify({"message": "Loyalty program updated."}), 200

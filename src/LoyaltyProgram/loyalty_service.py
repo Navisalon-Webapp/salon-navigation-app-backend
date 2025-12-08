@@ -158,6 +158,7 @@ def award_points_for_visit(
     cid: int,
     bid: int,
     amount: Optional[object] = None,
+    quantity: Optional[int] = None,
     explicit_points: Optional[int] = None,
     source: str = "visit",
 ) -> Dict[str, object]:
@@ -168,6 +169,16 @@ def award_points_for_visit(
         awarded_points = max(int(explicit_points), 0)
     elif program_type == "appts_thresh":
         awarded_points = 1
+    elif program_type == "pdct_thresh":
+        units = 1
+        if quantity is not None:
+            try:
+                units = int(quantity)
+            except (TypeError, ValueError):
+                units = 1
+        if units <= 0:
+            units = 1
+        awarded_points = units
     else:
         awarded_points = calculate_points(amount, None)
     if awarded_points <= 0:
