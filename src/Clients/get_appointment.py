@@ -46,10 +46,9 @@ def get_appointment_details(aid):
             a.start_time,
             a.expected_end_time,
             a.end_time,
-            a.notes,
             s.name as service_name,
             s.price as service_price,
-            s.durationMin as service_duration,
+            s.duration as service_duration,
             u_employee.first_name as employee_first_name,
             u_employee.last_name as employee_last_name,
             u_customer.first_name as customer_first_name,
@@ -77,7 +76,6 @@ def get_appointment_details(aid):
         
         if not result:
             return jsonify({"message": "Appointment not found."}), 404
-        
         # Format the response
         appointment_data = {
             "id": result['aid'],
@@ -96,7 +94,6 @@ def get_appointment_details(aid):
             "expected_end_time": result['expected_end_time'].isoformat() if result['expected_end_time'] else None,
             "end_time": result['end_time'].isoformat() if result['end_time'] else None,
             "status": "Completed" if result['end_time'] else "Scheduled",
-            "notes": result['notes'],
             "business_name": result['business_name'],
             "address": {
                 "street": result['street'],

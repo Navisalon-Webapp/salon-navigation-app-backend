@@ -28,7 +28,7 @@ def business_services(bid):
         return jsonify({"status": "Failure",
                         "message": "Error connecting to db"}), 500
     cur = conn.cursor(dictionary=True, buffered=True)
-    cur.execute("SELECT sid, name, price, durationMin FROM services WHERE bid = %s", (bid,))
+    cur.execute("SELECT sid, name, price, duration FROM services WHERE bid = %s", (bid,))
     rows = cur.fetchall()
     cur.close()
     conn.close()
@@ -111,12 +111,22 @@ def create_appointment():
         
         # Insert appointment
         insert_q = """
-            INSERT INTO appointments (cid, eid, sid, start_time, expected_end_time, notes)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            INSERT INTO appointments (cid, eid, sid, start_time, expected_end_time)
+            VALUES (%s, %s, %s, %s, %s)
         """
-        cur.execute(insert_q, (cid, eid, sid, start_str, expected_str, notes))
+        cur.execute(insert_q, (cid, eid, sid, start_str, expected_str))
         conn.commit()
         new_aid = cur.lastrowid
+
+        if notes.strip():
+            author_uid = current_user.id if hasattr(current_user, "id") else None
+            author_role = check_role() if hasattr(current_user, "id") else "client"
+            note_q = """
+                INSERT INTO appointment_notes (aid, author_uid, author_role, note_text)
+                VALUES (%s, %s, %s, %s)
+            """
+            cur.execute(note_q, (new_aid, author_uid, author_role, notes))
+            conn.commit()
         
         # Create transaction record for the appointment
         transaction_query = """
@@ -201,9 +211,9 @@ def employee_reschedule():
     
     try:
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("select durationMin from services where sid = %s", [appt_details['sid']])
+        cursor.execute("select duration from services where sid = %s", [appt_details['sid']])
         row=cursor.fetchone()
-        duration=row['durationMin']
+        duration=row['duration']
 
         end_time = start_time + timedelta(duration)
 

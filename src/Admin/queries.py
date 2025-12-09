@@ -71,7 +71,7 @@ FROM loyalty_programs;
 query_client_prog_percent = """
 SELECT
 ROUND((COUNT(DISTINCT clb.cid) / (SELECT COUNT(*) FROM customers)) * 100, 2) AS percent_participating
-FROM customer_loyalty_balance clb;
+FROM customer_loyalty_points clb;
 """
 
 query_average_saved = """
@@ -174,7 +174,7 @@ query_top_services = """
 SELECT sc.name, SUM(t.amount) AS revenue
 FROM transactions t
 JOIN appointments a ON t.aid = a.aid
-JOIN services s ON a.serv_id = s.serv_id
+JOIN services s ON a.sid = s.sid
 JOIN service_categories sc ON s.cat_id = sc.cat_id
 GROUP BY sc.name
 ORDER BY revenue DESC
@@ -205,7 +205,7 @@ FROM appointments;
 query_appt_by_service = """
 SELECT sc.name, COUNT(*) AS appt_count
 FROM appointments a
-JOIN services s ON a.serv_id = s.serv_id
+JOIN services s ON a.sid = s.sid
 JOIN service_categories sc ON s.cat_id = sc.cat_id
 GROUP BY sc.name;
 """

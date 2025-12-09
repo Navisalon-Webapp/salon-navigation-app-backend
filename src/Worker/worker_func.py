@@ -34,7 +34,7 @@ def get_appointments(eid, date_filter=None):
     
     if date_filter:
         query = """
-        SELECT a.aid, a.start_time, a.expected_end_time, a.notes, u.first_name, u.last_name, s.name as service_name, s.durationMin
+        SELECT a.aid, a.start_time, a.expected_end_time, u.first_name, u.last_name, s.name as service_name, s.duration
         FROM appointments a
         LEFT JOIN customers c ON a.cid = c.cid
         LEFT JOIN users u ON c.uid = u.uid
@@ -46,7 +46,7 @@ def get_appointments(eid, date_filter=None):
         cursor.execute(query, [eid, date_filter])
     else:
         query = """
-        SELECT a.aid, a.start_time, a.expected_end_time, a.notes, u.first_name, u.last_name, s.name as service_name, s.durationMin
+        SELECT a.aid, a.start_time, a.expected_end_time, a.notes, u.first_name, u.last_name, s.name as service_name, s.duration
         FROM appointments a
         LEFT JOIN customers c ON a.cid = c.cid
         LEFT JOIN users u ON c.uid = u.uid
@@ -67,6 +67,7 @@ def get_avail(eid):
     cursor = conn.cursor(dictionary=True, buffered=True)
     cursor.execute(query_availability,[eid])
     schedule = cursor.fetchall()
+    print(schedule)
     return schedule
 
 def insert_avail(eid, week_data):
@@ -78,17 +79,6 @@ def insert_avail(eid, week_data):
         # First, delete all existing schedules for this employee
         cursor.execute("DELETE FROM schedule WHERE eid = %s", [eid])
         
-        # Map frontend day names to 3-letter abbreviations
-        day_map = {
-            "monday": "Mon",
-            "tuesday": "Tue",
-            "wednesday": "Wed",
-            "thursday": "Thu",
-            "friday": "Fri",
-            "saturday": "Sat",
-            "sunday": "Sun"
-        }
-        
         for day, info in week_data.items():
             if info["enabled"]:
                 # Parse time strings (HH:MM)
@@ -99,13 +89,12 @@ def insert_avail(eid, week_data):
                 start_time = datetime(1970, 1, 1, int(start_parts[0]), int(start_parts[1]), 0)
                 finish_time = datetime(1970, 1, 1, int(end_parts[0]), int(end_parts[1]), 0)
                 
-                # Get the 3-letter day abbreviation
-                day_name = day_map.get(day.lower(), day.capitalize()[:3])
+                
                 
                 # Insert the schedule entry with the day column
                 cursor.execute(
                     "INSERT INTO schedule (eid, day, start_time, finish_time) VALUES (%s, %s, %s, %s)",
-                    [eid, day_name, start_time, finish_time]
+                    [eid, day.lower(), start_time, finish_time]
                 )
         
         conn.commit()
