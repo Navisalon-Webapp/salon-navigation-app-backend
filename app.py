@@ -62,7 +62,7 @@ login_manager.login_view = "signin.getSignin"
 CORS(
     app,
     supports_credentials=True,
-    resources={r"/*": {"origins": ["http://localhost:5173", "https://salon-navigation-app-frontend-neen.vercel.app/", r"https://.*vercel\.app"]}}
+    resources={r"/*": {"origins": "*"}
 )
 
 # Detect if running in production (on Render)
