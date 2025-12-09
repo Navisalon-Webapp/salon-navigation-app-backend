@@ -289,20 +289,7 @@ def delete_service(sid):
 @login_required
 def get_categories():
     try:
-        cursor = db.cursor(buffered=True)
-        cursor.execute("SELECT cat_id, name FROM service_categories ORDER BY name ASC")
-        rows = cursor.fetchall()
-        cursor.close()
-        cats = [{"id": cid, "name": name} for (cid, name) in rows]
-        return jsonify(cats), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-# Get service category options
-@manage_services.route("/categories", methods=["GET"])
-@login_required
-def get_categories():
-    try:
+        db = get_db_connection()
         cursor = db.cursor(buffered=True)
         cursor.execute("SELECT cat_id, name FROM service_categories ORDER BY name ASC")
         rows = cursor.fetchall()
@@ -317,6 +304,7 @@ def get_categories():
 @login_required
 def get_employees_for_business():
     try:
+        db = get_db_connection()
         bid = get_curr_bid()
         cursor = db.cursor(buffered=True)
         cursor.execute("""

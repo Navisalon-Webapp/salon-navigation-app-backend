@@ -418,7 +418,7 @@ def update_active(uid):
         cursor.execute("""
             INSERT INTO active_users_monthly (year, month, active_count)
             VALUES (YEAR(CURDATE()), MONTH(CURDATE()), 1)
-            ON DUPLICATE KEY UPDATE new_users_count = new_users_count + 1
+            ON DUPLICATE KEY UPDATE active_count = active_count + 1
         """)
         conn.commit()
     finally:

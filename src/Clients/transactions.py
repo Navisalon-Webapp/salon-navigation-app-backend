@@ -8,6 +8,21 @@ TAX_RATE = Decimal("0.06125")
 
 transaction = Blueprint('transaction', __name__,)
 
+def get_db():
+
+    try:
+        db = mysql.connector.connect(
+            host=os.getenv("DB_HOST"),
+            user=os.getenv("DB_USER"),
+            port=int(os.getenv("DB_PORT")),
+            password=os.getenv("DB_PASSWORD"),
+            database=os.getenv("DB_NAME")
+            )
+        return db
+    except mysql.connector.Error as err:
+        print(f"Error: Database could not connect. : {err}")
+        return None
+
 def serialize_row(row):
     new_row = {}
     for k, v in row.items():
@@ -83,7 +98,7 @@ def get_transactions():
 @login_required
 def process_checkout():
     data = request.get_json()
-    cid = current_user.id
+    cid = get_cid()
     bid = data.get("bid")
     payment_method_id = data.get("payment_method_id")
     is_product_purchase = data.get("is_product_purchase", False)
@@ -353,9 +368,9 @@ def process_checkout():
 @transaction.route('/transactions/details', methods=["GET"])
 @login_required
 def get_discounts():
-    cid = current_user.id
+    cid = get_cid()
     bid = request.args.get("bid")
-    is_product_purchase = request.args.get("is_product_purchase", False)
+    is_product_purchase = request.args.get("is_product_purchase", "false").lower() == "true"
 
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
@@ -367,9 +382,9 @@ def get_discounts():
                 SELECT c.pid, c.amount, p.price
                 FROM cart c
                 JOIN products p ON p.pid = c.pid
-                WHERE c.cid = %s AND c.bid = %s
+                WHERE c.cid = %s
                 ORDER BY p.price ASC
-            """, (cid, bid))
+            """, (cid,))
             cart_items = cursor.fetchall()
 
             if not cart_items:
@@ -492,7 +507,7 @@ def get_discounts():
             
             # points reward
             if r["is_points"] and (r["threshold"] > 0):
-                reward = round(Decimal(r["rwd_value"]) * Decimal(p["pts_value"]), 2)
+                reward = round(Decimal(r["rwd_value"]) * Decimal(r["pts_value"]), 2)
                 progs.append({"rwd_id": r["rwd_id"], "description": r["description"], "threshold": r["threshold"], "reward_type": "points", "rwd_value": r["rwd_value"], "rwd_value": reward})
             
             loyalty_discount += reward
@@ -521,3 +536,31 @@ def get_discounts():
     finally:
         cursor.close()
         conn.close()
+
+def get_cid():
+    uid = getattr(current_user, 'id', None)
+    if uid is None:
+        print("Error: No UID found in request context.")
+        return None
+    
+    db = get_db()
+    if db is None:
+        print("Error: Could not establish connection to the database.")
+        return None
+    cursor = db.cursor(buffered=True)
+    try:
+        query = "select cid from customers where uid = %s;"
+        cursor.execute(query, (uid,))
+        result = cursor.fetchone()
+        if result:
+            customer_id = result[0]
+            return customer_id
+        else:
+            print("Error: No customer found for the given UID.")
+            return None
+    except mysql.connector.Error as err:
+        print(f"Error: Database query failed. : {err}")
+        return None
+    finally:
+        cursor.close()
+        db.close()
