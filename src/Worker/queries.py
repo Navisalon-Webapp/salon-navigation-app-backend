@@ -45,6 +45,12 @@ query_average_rating = """
     where eid = %s;
 """
 
+query_business_bid = """
+    select bid
+    from business
+    where name = %s;
+"""
+
 update_employee_bio = """
     update employee
     set bio = %s

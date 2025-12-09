@@ -361,8 +361,8 @@ def update_business():
         }), 401
     
     data = request.get_json()
-    bid = data['bid'] if data['bid'] else None
-    if not bid:
+    business = data['business'] if data['business'] else None
+    if not business:
         print("missing parameter")
         return jsonify({
             "status":"failure",
@@ -374,12 +374,24 @@ def update_business():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
+        cursor.execute(query_business_bid, [business])
+        result = cursor.fetchone()
+        if not result:
+            print("No business by that name")
+            return jsonify({
+                "status":"failure",
+                "message":"cannot find business by that name",
+                "bid_found":False
+            }), 200
+        else:
+            bid = result[0]
         cursor.execute(update_employee_business, [bid, eid])
         conn.commit()
         return jsonify({
             "status":"success",
             "message":"updated employee business",
-            "employee id": eid
+            "employee id": eid,
+            "bid_found":True
         }), 200
     except mysql.connector.Error as e:
         print(f"Database Error {e}")
@@ -518,7 +530,7 @@ def upload_profile_image():
         if conn:
             conn.close()
 
-@profile.route('/employee/picture/upload', methods=['POST'])
+@profile.route('/picture/upload', methods=['POST'])
 @login_required
 def upload_picture():
     """
