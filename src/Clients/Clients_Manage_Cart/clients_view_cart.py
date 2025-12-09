@@ -5,8 +5,6 @@ from dotenv import load_dotenv
 import os
 from flask_login import current_user, login_required
 
-from src.LoyaltyProgram.loyalty_service import award_points_for_visit
-
 
 load_dotenv()
 
@@ -244,30 +242,13 @@ def checkout():
         if not cart_items:
             return jsonify({"message": "Cart is empty."}), 400
         
-        # Validate stock availability before processing checkout
         for item in cart_items:
-            if item['stock'] < item['amount']:
-                return jsonify({
-                    "message": f"Not enough stock for {item['name']}. Available: {item['stock']}, Requested: {item['amount']}"
-                }), 400
-        
-        awards = []
-
-        for item in cart_items:
-            # Decrement stock by the amount purchased
             update_stock_query = """
             UPDATE products 
             SET stock = stock - %s 
-            WHERE pid = %s AND stock >= %s
+            WHERE pid = %s
             """
-            cursor.execute(update_stock_query, (item['amount'], item['pid'], item['amount']))
-            
-            # Verify the stock was actually updated
-            if cursor.rowcount == 0:
-                db.rollback()
-                return jsonify({
-                    "message": f"Insufficient stock for {item['name']}. Please refresh and try again."
-                }), 400
+            cursor.execute(update_stock_query, (item['amount'], item['pid']))
             
             transaction_amount = float(item['price']) * item['amount']
             insert_transaction_query = """
@@ -280,33 +261,11 @@ def checkout():
                 item['pid'],
                 transaction_amount
             ))
-
-            awards.append(
-                {
-                    "bid": item['bid'],
-                    "amount": transaction_amount,
-                    "quantity": item.get('amount', 1),
-                }
-            )
         
         delete_query = "DELETE FROM cart WHERE cid = %s"
         cursor.execute(delete_query, (customer_id,))
         
         db.commit()
-
-        for award in awards:
-            try:
-                award_points_for_visit(
-                    db,
-                    aid=None,
-                    cid=customer_id,
-                    bid=award["bid"],
-                    amount=award["amount"],
-                    quantity=award.get("quantity"),
-                    source="product",
-                )
-            except Exception as err:
-                print(f"[WARN] Failed to award loyalty for product purchase: {err}")
         
         return jsonify({
             "message": "Order placed successfully! Come in store for pickup.",
