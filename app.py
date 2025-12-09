@@ -2,7 +2,7 @@ from flask import Flask
 import os
 from dotenv import load_dotenv
 from flask_cors import CORS
-import atexit
+# import atexit
 from src.extensions import mail
 from src.Auth.signup import signup
 from src.Auth.signin import signin
@@ -27,6 +27,7 @@ from src.Salon.approve_workers import approve_workers
 from src.Notifications.notifications import notification
 from src.Admin.verifysalon import verifysalon
 from src.LoyaltyProgram.create_loyalty_programs import loyalty_prog
+from src.LoyaltyProgram.loyalty_points import loyalty_points
 from src.Promotions.create_promos import promotions
 from src.Clients.Clients_Review.Clients_Review_Workers import review_workers
 from src.ViewVisitHistory.owner_view_visit_history import visit_hist
@@ -45,6 +46,7 @@ from src.Owner.operation_time import operation
 from src.Clients.save_favorites import saved_favorites
 from src.Worker.profile import profile
 from src.Salon.deposit import deposit_rate
+from src.Salon.appointments import business_appointments
 
 
 
@@ -71,7 +73,7 @@ app.config.update(
     SESSION_COOKIE_SAMESITE="None" if is_production else "Lax",
     SESSION_COOKIE_SECURE=True if is_production else False,
 )
- 
+
 app.config['MAIL_SERVER']='smtp.gmail.com'
 app.config['MAIL_PORT'] = 465
 app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
@@ -104,6 +106,7 @@ app.register_blueprint(approve_workers)
 app.register_blueprint(notification)
 app.register_blueprint(verifysalon)
 app.register_blueprint(loyalty_prog)
+app.register_blueprint(loyalty_points)
 app.register_blueprint(promotions)
 app.register_blueprint(review_workers)
 app.register_blueprint(visit_hist)
@@ -121,12 +124,13 @@ app.register_blueprint(operation)
 app.register_blueprint(saved_favorites)
 app.register_blueprint(profile)
 app.register_blueprint(deposit_rate)
+app.register_blueprint(business_appointments)
 
 app.config['SECRET_KEY']=os.getenv('SECRET_KEY')
 
-service = Service()
+# service = Service()
 
-atexit.register(service.stop_monitoring)
+# atexit.register(service.stop_monitoring)
 
 
 if __name__ == "__main__":
@@ -136,6 +140,6 @@ if __name__ == "__main__":
             if not scheduler.running:
                 scheduler.start()
                 print("Scheduler started successfully")
-            service.start()
+            # service.start()
     port = int(os.getenv("PORT", "5000"))
     app.run(host="0.0.0.0", port=port, debug=True)

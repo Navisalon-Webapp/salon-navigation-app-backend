@@ -25,7 +25,8 @@ def get_salon():
             "street": salon.get("street"),
             "city": salon.get("city"),
             "state": salon.get("state"),
-            "zip_code": salon.get("zip_code")
+            "zip_code": salon.get("zip_code"),
+            "year_est": salon.get("year_est")
         }), 200
     except Error as e:
         return jsonify({
@@ -54,6 +55,7 @@ def manage_details():
         city = data.get("city", "")
         state = data.get("state", "")
         zip_code = data.get("zip_code", "")
+        year_est = data.get("year_est", "")
         
         if not name:
             return jsonify({
@@ -61,7 +63,7 @@ def manage_details():
                 "message": "Salon name is required"
             }), 400
         
-        update_salon_details_by_uid(uid, name, status, street, city, state, zip_code)
+        update_salon_details_by_uid(uid, name, status, street, city, state, zip_code, year_est)
         
         return jsonify({
             "status": "success",

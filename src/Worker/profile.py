@@ -25,11 +25,19 @@ def get_employee_profile(eid):
         try:
             cursor.execute(query_employee_info, [eid])
             info = cursor.fetchone()
-            if info['profile_picture']:
-                if isinstance(info['profile_picture'], bytes):
-                    info['profile_picture'] = f"data:image/jpeg;base64,{info['profile_picture'].decode('utf-8')}"
+            if not info:
+                print("Employee not found")
+                return jsonify({
+                    "status": "failure",
+                    "message": "employee not found"
+                }), 404
+
+            profile_picture = info.get('profile_picture')
+            if profile_picture:
+                if isinstance(profile_picture, bytes):
+                    info['profile_picture'] = f"data:image/jpeg;base64,{profile_picture.decode('utf-8')}"
                 else:
-                    info['profile_picture'] = f"data:image/jpeg;base64,{info['profile_picture']}"
+                    info['profile_picture'] = f"data:image/jpeg;base64,{profile_picture}"
         except mysql.connector.Error as e:
             print(f"Database Error {e}")
             return jsonify({
@@ -353,8 +361,8 @@ def update_business():
         }), 401
     
     data = request.get_json()
-    bid = data['bid'] if data['bid'] else None
-    if not bid:
+    business = data['business'] if data['business'] else None
+    if not business:
         print("missing parameter")
         return jsonify({
             "status":"failure",
@@ -366,12 +374,24 @@ def update_business():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
+        cursor.execute(query_business_bid, [business])
+        result = cursor.fetchone()
+        if not result:
+            print("No business by that name")
+            return jsonify({
+                "status":"failure",
+                "message":"cannot find business by that name",
+                "bid_found":False
+            }), 200
+        else:
+            bid = result[0]
         cursor.execute(update_employee_business, [bid, eid])
         conn.commit()
         return jsonify({
             "status":"success",
             "message":"updated employee business",
-            "employee id": eid
+            "employee id": eid,
+            "bid_found":True
         }), 200
     except mysql.connector.Error as e:
         print(f"Database Error {e}")
@@ -510,7 +530,7 @@ def upload_profile_image():
         if conn:
             conn.close()
 
-@profile.route('/employee/picture/upload', methods=['POST'])
+@profile.route('/picture/upload', methods=['POST'])
 @login_required
 def upload_picture():
     """

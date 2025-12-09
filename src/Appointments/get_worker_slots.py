@@ -29,7 +29,7 @@ def get_available_slots(eid):
     
     try:
         request_date = datetime.strptime(date_str, "%Y-%m-%d")
-        day_of_week = request_date.strftime("%a")  # Short day name like "Mon", "Tue"
+        day_of_week = request_date.strftime("%A").lower()  # Short day name like "Mon", "Tue"
     except ValueError:
         return jsonify({"status": "failure", "message": "invalid date format, use YYYY-MM-DD"}), 400
     

@@ -42,6 +42,23 @@ def getSignin():
         
         uid = get_uid(data['email'])
         user_info = get_user_info(uid['uid'])
+        
+        # Check approval status for business owners and employees
+        if user_info['name'] == 'business':
+            approval_status = check_business_approval(uid['uid'])
+            if not approval_status:
+                return jsonify({
+                    "status": "failure",
+                    "message": "Your business account is pending admin approval. You will be notified once approved."
+                }), 403
+        elif user_info['name'] == 'employee':
+            approval_status = check_employee_approval(uid['uid'])
+            if not approval_status:
+                return jsonify({
+                    "status": "failure",
+                    "message": "Your employee account is pending salon approval. You will be notified once approved."
+                }), 403
+        
         user = User(
             id = user_info['uid'],
             email = user_info['email'],
@@ -157,10 +174,31 @@ def reset_password():
 @signin.route('/user-session', methods=['GET'])
 @login_required
 def get_user_session():
-    return jsonify({
+    response_data = {
         "User_ID": current_user.id,
         "email": current_user.email,
         "first name": current_user.firstName,
         "last name": current_user.lastName,
         "role": current_user.role
-    })
+    }
+    
+    # Add employeeId for employee users
+    if current_user.role == "employee":
+        conn = None
+        cursor = None
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT eid FROM employee WHERE uid = %s", (current_user.id,))
+            result = cursor.fetchone()
+            if result:
+                response_data["employee_id"] = result["eid"]
+        except Exception as e:
+            print(f"Error fetching employeeId: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()
+    
+    return jsonify(response_data)

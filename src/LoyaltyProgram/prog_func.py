@@ -1,8 +1,8 @@
 import os
+import base64
 from dotenv import load_dotenv
 import mysql.connector
 from mysql.connector import Error
-from flask_login import current_user
 
 load_dotenv()
 
@@ -20,9 +20,9 @@ def get_db_connection():
     except Error as e:
         print(f"Error connecting to MySQL: {e}")
         return None
-    
+
 def get_curr_bid():
-    """Return the business ID for the currently logged-in user, or raise an error if none exists."""
+    from flask_login import current_user
     uid = getattr(current_user, "id", None)
     if uid is None:
         raise ValueError("Current user is not logged in")
@@ -44,22 +44,3 @@ def get_curr_bid():
     except Exception as e:
         conn.close()
         raise e
-
-# Find existing service category or create a new one
-def get_or_create_category(cursor, cat_id=None, category=None):
-    if cat_id:
-        cursor.execute("SELECT cat_id FROM service_categories WHERE cat_id = %s", (cat_id,))
-        if cursor.fetchone():
-            return cat_id
-        else:
-            raise ValueError("cat_id not found")
-
-    if category:
-        cursor.execute("SELECT cat_id FROM service_categories WHERE name = %s", (category,))
-        row = cursor.fetchone()
-        if row:
-            return row[0]
-        cursor.execute("INSERT INTO service_categories (name) VALUES (%s)", (category,))
-        return cursor.lastrowid
-
-    raise ValueError("No category provided")

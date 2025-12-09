@@ -4,9 +4,8 @@ query_availability = "select * from salon_app.schedule where eid = %s"
 
 query_employee_images = """
     select id, picture, active
-    from employee_work_pictures p
-    join employee e on p.uid=e.uid
-    where e.eid=%s;
+    from employee_work_pictures
+    where eid=%s;
 """
 
 query_employee_info = """
@@ -19,10 +18,10 @@ query_employee_info = """
 """
 
 query_employee_expertise = """
-    select e.exp_id, e.expertise
-    from expertise e
-    join employee_expertise ee on e.exp_id=ee.exp_id
-    where ee.eid=%s;
+    select s.sid, s.name as expertise
+    from services s
+    join employee_services es on s.sid = es.sid
+    where es.eid = %s;
 """
 
 query_employee_reviews = """
@@ -44,6 +43,12 @@ query_average_rating = """
     select avg(rating) as average_rating
     from reviews
     where eid = %s;
+"""
+
+query_business_bid = """
+    select bid
+    from business
+    where name = %s;
 """
 
 update_employee_bio = """
