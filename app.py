@@ -62,7 +62,7 @@ login_manager.login_view = "signin.getSignin"
 CORS(
     app,
     supports_credentials=True,
-    resources={r"/*": {"origins": "*"}
+    resources={r"/*": {"origins": "*"}}
 )
 
 # Detect if running in production (on Render)
