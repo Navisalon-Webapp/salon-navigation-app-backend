@@ -1,4 +1,5 @@
-from flask import jsonify, Blueprint
+from flask import jsonify, Blueprint, request
+from flask_cors import CORS
 import mysql.connector
 from mysql.connector import Error
 from dotenv import load_dotenv
@@ -10,9 +11,7 @@ from src.LoyaltyProgram.loyalty_service import award_points_for_visit
 
 load_dotenv()
 
-
 client_browse = Blueprint('clients_browse', __name__)
-
 
 def get_db():
 
@@ -29,16 +28,18 @@ def get_db():
         print(f"Error: Database could not connect. : {err}")
         return None
 
-
-
 #clients can browse salons
 @client_browse.route("/api/client/browse-salons", methods=["GET"])
 @login_required
 def browse_salons():
     query = """ 
-        SELECT b.bid, b.name, a.street, 
-        a.city, a.state, a.country, a.zip_code
-        FROM business b JOIN addresses a ON b.aid = a.aid
+        SELECT b.bid, b.name, a.street,
+        a.city, a.state, a.country, a.zip_code,
+        GROUP_CONCAT(DISTINCT s.name ORDER BY s.name SEPARATOR ', ') AS services
+        FROM business b
+        JOIN addresses a ON b.aid = a.aid
+        LEFT JOIN services s ON b.bid = s.bid
+        GROUP BY b.bid
     """
     db = None
     cursor = None
@@ -49,7 +50,7 @@ def browse_salons():
         rows = cursor.fetchall()
         salons = [{"business_id": row[0], "name": row[1], 
                 "street": row[2], "city": row[3], "state": row[4], 
-                    "country": row[5], "zip_code": row[6]} for row in rows]
+                    "country": row[5], "zip_code": row[6], "services": row[7]} for row in rows]
         return jsonify(salons)
     except Error as e:
         return jsonify({
@@ -67,20 +68,25 @@ def browse_salons():
         if db:
             db.close()
 
-
 #clients can browse workers
 @client_browse.route("/api/client/browse-workers", methods=["GET"])
 @login_required
 def browse_workers():
-    query = """ 
-        SELECT e.eid,u.first_name, u.last_name, ex.expertise,
-        b.name AS business_name, b.bid AS business_id, 
+    query = """
+        SELECT e.eid, u.first_name, u.last_name,
+        GROUP_CONCAT(DISTINCT s.name ORDER BY s.name SEPARATOR ', ') AS services,
+        GROUP_CONCAT(DISTINCT sc.name ORDER BY sc.name SEPARATOR ', ') AS categories,
+        b.name AS business_name, b.bid AS business_id,
         a.street, a.city, a.state, a.country, a.zip_code
-        FROM employee e JOIN employee_expertise ee ON e.eid = ee.eid
-        JOIN expertise ex ON ee.exp_id = ex.exp_id 
+        FROM employee e
+        JOIN employee_services es ON e.eid = es.eid
+        JOIN services s ON es.sid = s.sid
+        JOIN service_categories sc ON s.cat_id = sc.cat_id
         JOIN users u ON e.uid = u.uid
         JOIN business b ON e.bid = b.bid
         JOIN addresses a ON b.aid = a.aid
+        WHERE e.approved = true
+        GROUP BY e.eid
     """
     db = None
     cursor = None
@@ -89,14 +95,12 @@ def browse_workers():
         cursor = db.cursor()
         cursor.execute(query)
         rows = cursor.fetchall()
-        print(f"[browse_workers] Query returned {len(rows)} rows")
         workers = [{"employee_id": row[0], "employee_first_name": row[1], 
-                    "employee_last_name": row[2], "expertise": row[3],
-                    "business_name": row[4], "business_id": row[5],
-                    "street": row[6], "city": row[7], "state": row[8],
-                    "country": row[9], "zip_code": row[10]
+                    "employee_last_name": row[2], "services": row[3], "categories": row[4],
+                    "business_name": row[5], "business_id": row[6],
+                    "street": row[7], "city": row[8], "state": row[9],
+                    "country": row[10], "zip_code": row[11]
                     } for row in rows]
-        print(f"[browse_workers] Returning {len(workers)} workers")
         return jsonify(workers)
     except Error as e:
         return jsonify({
@@ -189,9 +193,24 @@ def get_business_workers(business_id: int):
         if db:
             db.close()
 
+@client_browse.route("/api/client/service-categories", methods=["GET"])
+@login_required
+def get_service_categories():
+    db = None
+    cursor = None
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute("SELECT cat_id, name FROM service_categories ORDER BY name")
+        rows = cursor.fetchall()
 
-
-
+        categories = [{"cat_id": r[0], "name": r[1]} for r in rows]
+        return jsonify(categories)
+    finally:
+        if cursor:
+            cursor.close()
+        if db:
+            db.close()
 
 #clients can browse previous appointments
 @client_browse.route("/api/clients/view-prev-appointments", methods=["GET"])
@@ -215,7 +234,7 @@ def client_view_appoints():
         query = """ 
             SELECT a.aid as appointment_id, s.name as service_name, s.price as service_price, 
             s.bid as business_id, u.first_name, u.last_name, e.eid as employee_id, a.start_time, a.expected_end_time, 
-            a.end_time, s.durationMin
+            a.end_time, s.duration
             FROM appointments a
             JOIN employee e ON a.eid = e.eid
             JOIN services s ON a.sid = s.sid
@@ -268,7 +287,7 @@ def client_view_appoints():
                 "date": date_str,
                 "expected_end_time": row['expected_end_time'].strftime('%Y-%m-%d %H:%M:%S') if row['expected_end_time'] else None,
                 "end_time": row['end_time'].strftime('%Y-%m-%d %H:%M:%S') if row['end_time'] else None,
-                "durationMins": row.get('durationMin', 60),
+                "duration": row.get('duration', 60),
                 "status": "completed"
             })
         
@@ -281,7 +300,6 @@ def client_view_appoints():
             cursor.close()
         if db:
             db.close()
-
 
 #clients can browse future appointments
 @client_browse.route("/api/clients/view-future-appointments", methods=["GET"])
@@ -305,7 +323,7 @@ def client_view_future_appoints():
         query = """ 
             SELECT a.aid as appointment_id, s.name as service_name, s.price as service_price, 
             u.first_name, u.last_name, e.eid as employee_id, a.start_time, a.expected_end_time, 
-            a.end_time, s.durationMin
+            a.end_time, s.duration
             FROM appointments a
             JOIN employee e ON a.eid = e.eid
             JOIN services s ON a.sid = s.sid
@@ -341,7 +359,7 @@ def client_view_future_appoints():
                 "date": date_str,
                 "expected_end_time": row['expected_end_time'].strftime('%Y-%m-%d %H:%M:%S') if row['expected_end_time'] else None,
                 "end_time": row['end_time'].strftime('%Y-%m-%d %H:%M:%S') if row['end_time'] else None,
-                "durationMins": row.get('durationMin', 60),
+                "duration": row.get('duration', 60),
                 "status": "scheduled"
             })
         
@@ -398,6 +416,76 @@ def get_business_info(business_id):
     except mysql.connector.Error as err:
         print(f"Error fetching business info: {err}")
         return jsonify({"message": "Failed to fetch business info."}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if db:
+            db.close()
+
+@client_browse.route("/api/visit-history/salon-views", methods=["POST"])
+@login_required
+def inc_salon_view():
+    db = None
+    cursor = None
+    try:
+        data = request.get_json()
+        bid = data.get("bid")
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        cid_query = "SELECT cid FROM customers WHERE uid = %s"
+        cursor.execute(cid_query, (current_user.id,))
+        cid_result = cursor.fetchone()
+        
+        if not cid_result:
+            return jsonify({"error": "Customer not found"}), 404
+        
+        cid = cid_result['cid']
+        
+        cursor.execute("""
+            INSERT INTO visit_history (cid, bid, salon_views)
+            VALUES (%s, %s, 1)
+            ON DUPLICATE KEY UPDATE salon_views = salon_views + 1;
+        """, (cid, bid))
+        db.commit()
+        return jsonify({"status": "success"}), 200
+    
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if db:
+            db.close()
+
+@client_browse.route("/api/visit-history/product-views", methods=["POST"])
+@login_required
+def inc_product_view():
+    db = None
+    cursor = None
+    try:
+        data = request.get_json()
+        bid = data.get("bid")
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        cid_query = "SELECT cid FROM customers WHERE uid = %s"
+        cursor.execute(cid_query, (current_user.id,))
+        cid_result = cursor.fetchone()
+        
+        if not cid_result:
+            return jsonify({"error": "Customer not found"}), 404
+        
+        cid = cid_result['cid']
+        
+        cursor.execute("""
+            INSERT INTO visit_history (cid, bid, product_views)
+            VALUES (%s, %s, 1)
+            ON DUPLICATE KEY UPDATE product_views = product_views + 1;
+        """, (cid, bid))
+        db.commit()
+        return jsonify({"status": "success"}), 200
+    
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
     finally:
         if cursor:
             cursor.close()

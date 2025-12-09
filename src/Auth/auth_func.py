@@ -6,6 +6,7 @@ from .queries import query_user_info, update_password
 import hashlib
 import secrets
 import re
+from flask import jsonify
 
 load_dotenv()
 
@@ -121,7 +122,7 @@ def insert_Auth(firstName, lastName, email, password):
         if conn:
             conn.close()
     
-def insert_Customer(uid):
+def insert_Customer(uid, data):
     """return cid
 
     insert uid into customers table
@@ -133,7 +134,8 @@ def insert_Customer(uid):
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("INSERT INTO customers (uid) VALUES (%s);",[uid])
+        cursor.execute("UPDATE users SET phone = %s WHERE uid = %s;", [data['phoneNumber'], uid])
+        cursor.execute("INSERT INTO customers (uid, birthdate, gender, ind_id, income) VALUES (%s, %s, %s, %s, %s);",[uid, data['birthDate'], data['gender'], data['industry'], data['income']])
         cid = cursor.lastrowid
         cursor.execute("INSERT INTO users_roles (uid, rid) VALUES (%s, %s);",[uid,1])
         conn.commit()
@@ -168,8 +170,8 @@ def insert_Owner(uid, data):
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         cursor.execute("UPDATE users SET phone = %s WHERE uid = %s;", [data['phoneNumber'], uid])
-        param = [uid, data['salonName'], aid]
-        cursor.execute("INSERT INTO business (uid, name, aid) VALUES (%s, %s, %s);",param)
+        param = [uid, data['salonName'], aid, data['salonEstYear']]
+        cursor.execute("INSERT INTO business (uid, name, aid, year_est) VALUES (%s, %s, %s, %s);",param)
         bid = cursor.lastrowid
         cursor.execute("INSERT INTO users_roles (uid, rid) VALUES (%s, %s);",[uid,2])
         conn.commit()
@@ -213,27 +215,17 @@ def insert_Worker(uid, data):
         if(result is None):
             cursor.execute("INSERT INTO employee (uid) VALUES (%s);",param)
         else:
-            param += [result['bid']]
-            cursor.execute("INSERT INTO employee (uid, bid) VALUES (%s, %s);",param)
+            param += [result['bid'], data['startYear']]
+            cursor.execute("INSERT INTO employee (uid, bid, start_year) VALUES (%s, %s, %s);",param)
         eid = cursor.lastrowid
         cursor.execute("INSERT INTO users_roles (uid, rid) VALUES (%s, %s);",[uid,3])
         
-        # Insert expertise into database
-        if 'specialty' in data and data['specialty']:
-            # First check if the expertise exists
-            cursor.execute("SELECT exp_id FROM expertise WHERE expertise = %s;", [data['specialty']])
-            expertise_result = cursor.fetchone()
+        if 'service' in data and data['service']:
+            cursor.execute("INSERT INTO services (name, cat_id) VALUES (%s, %s)", [data['service'], data['serviceCat']])
+            sid = cursor.lastrowid
             
-            if expertise_result:
-                # Expertise exists, use its exp_id
-                exp_id = expertise_result['exp_id']
-            else:
-                # Expertise doesn't exist, create it
-                cursor.execute("INSERT INTO expertise (expertise) VALUES (%s);", [data['specialty']])
-                exp_id = cursor.lastrowid
-            
-            # Link employee to expertise
-            cursor.execute("INSERT INTO employee_expertise (eid, exp_id) VALUES (%s, %s);", [eid, exp_id])
+            # Link employee to service
+            cursor.execute("INSERT INTO employee_services (eid, sid) VALUES (%s, %s);", [eid, sid])
         
         conn.commit()
         return eid
@@ -268,6 +260,21 @@ def insert_Admin(uid):
             cursor.close()
         if conn:
             conn.close()
+
+def inc_new_users():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            INSERT INTO new_users_monthly (year, month, new_users_count)
+            VALUES (YEAR(CURDATE()), MONTH(CURDATE()), 1)
+            ON DUPLICATE KEY UPDATE new_users_count = new_users_count + 1
+        """)
+        conn.commit()
+    finally:
+        cursor.close()
+        conn.close()
 
 #sign in functions
 def get_Auth(email):
@@ -321,8 +328,6 @@ def update_pass(email, password):
             cursor.close()
         if conn:
             conn.close()
-    
-
     
 def get_uid(email):
     conn = None
@@ -403,3 +408,21 @@ def create_email_sub(cid):
         if conn:
             conn.close()
     # return id
+
+def update_active(uid):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("UPDATE users SET last_active = NOW() WHERE uid = %s", (uid,),)
+        cursor.execute("""
+            INSERT INTO active_users_monthly (year, month, active_count)
+            VALUES (YEAR(CURDATE()), MONTH(CURDATE()), 1)
+            ON DUPLICATE KEY UPDATE active_count = active_count + 1
+        """)
+        conn.commit()
+    finally:
+        cursor.close()
+        conn.close()
+    
+    return jsonify({"status": "success", "user": uid}), 200

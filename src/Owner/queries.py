@@ -27,7 +27,7 @@ WHERE pid = %s
 """
 
 get_salon_details = """
-SELECT b.bid, b.name, b.status, a.street, a.city, a.state, a.zip_code
+SELECT b.bid, b.name, b.status, a.street, a.city, a.state, a.zip_code, b.year_est
 FROM salon_app.business b
 LEFT JOIN salon_app.addresses a ON b.aid = a.aid
 WHERE b.uid = %s
@@ -35,7 +35,7 @@ WHERE b.uid = %s
 
 update_salon_basic = """
 UPDATE salon_app.business
-SET name = %s, status = %s
+SET name = %s, status = %s, year_est = %s
 WHERE uid = %s
 """
 

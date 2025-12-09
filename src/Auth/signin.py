@@ -51,7 +51,7 @@ def getSignin():
             role = user_info['name']
         )
         login_user(user, remember=False)
-
+        update_active(user_info['uid'])
         employee_id = None
         if current_user.role == "employee":
             try:

@@ -31,12 +31,14 @@ def getClientSignUp():
         uid = insert_Auth(data['firstName'],data['lastName'],data['email'],data['password'])
         if not isinstance(uid, int):
             raise Exception("Failed to create user account")
-        
-        cid = insert_Customer(uid)
+        print(uid)
+        cid = insert_Customer(uid, data)
+        print(cid)
         if not isinstance(cid, int):
             raise Exception("Failed to create customer record")
 
         create_email_sub(cid)
+        inc_new_users()
 
         return jsonify({
             "status": "success",
@@ -75,9 +77,13 @@ def getBusinessSignUp():
                 "password": data['password'],
                 "confirmPassword": data['confirmPassword']
             }), 400
-
+        print(data)
         uid = insert_Auth(data['firstName'],data['lastName'],data['email'],data['password'])
+        print("test")
         bid = insert_Owner(uid, data)
+        print(uid)
+
+        inc_new_users()
 
         return jsonify({
             "status": "success", 
@@ -119,6 +125,7 @@ def getEmployeeSignUp():
         
         uid = insert_Auth(data['firstName'],data['lastName'],data['email'],data['password'])
         eid = insert_Worker(uid, data)
+        inc_new_users()
 
         return jsonify({
             "status": "success",
@@ -159,6 +166,7 @@ def getAdminSignUp():
         
         uid = insert_Auth(data['firstName'],data['lastName'],data['email'],data['password'])
         insert_Admin(uid)
+        inc_new_users()
         return jsonify({
             "status": "success",
             "message": "Added new admin to database",
@@ -176,6 +184,36 @@ def business_list():
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     cursor.execute("SELECT uid, bid, name FROM business")
+    results = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return jsonify(results), 200
+
+@signup.route('/list-services', methods=['GET'])
+def service_list():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT sid, name FROM services")
+    results = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return jsonify(results), 200
+
+@signup.route('/list-service-categories', methods=['GET'])
+def service_category_list():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT cat_id, name FROM service_categories")
+    results = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return jsonify(results), 200
+
+@signup.route('/list-industries', methods=['GET'])
+def industry_list():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT ind_id, name FROM industries")
     results = cursor.fetchall()
     cursor.close()
     conn.close()

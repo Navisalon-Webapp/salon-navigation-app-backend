@@ -13,7 +13,7 @@ def payment_information(uid):
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         query_payment_information = """
-            select id, payment_type, card_number
+            select id, payment_type, cardholder_name, card_number, cvv, exp_month, exp_year
             from payment_information
             where uid = %s;
         """
@@ -43,9 +43,14 @@ def payment_information(uid):
 @payment.route('/new/<uid>', methods=['POST'])
 def insert_payment(uid):
     data = request.get_json()
-    payment_type = data['payment_type'] if data['payment_type'] else None
-    card_number = data['card_number'] if data['card_number'] else None
-    if not payment_type or not card_number:
+    payment_type = data['payment_type']
+    cardholder_name = data['cardholder_name']
+    card_number = data['card_number']
+    cvv = data['cvv']
+    exp_month = data['exp_month']
+    exp_year = data['exp_year']
+
+    if not payment_type or not card_number or not cardholder_name or not cvv or not exp_month or not exp_year:
         print("Missing parameters")
         return jsonify({
             "status":"success",
@@ -58,10 +63,10 @@ def insert_payment(uid):
         conn = get_db_connection()
         cursor = conn.cursor()
         insert_payment_info = """
-            insert into payment_information (uid, payment_type, card_number)
-            values (%s, %s, %s)
+            insert into payment_information (uid, payment_type, cardholder_name, card_number, cvv, exp_month, exp_year)
+            values (%s, %s, %s, %s, %s, %s, %s)
         """
-        param = [uid, payment_type, card_number]
+        param = [uid, payment_type, cardholder_name, card_number, cvv, exp_month, exp_year]
         cursor.execute(insert_payment_info, param)
         pay_id = cursor.lastrowid
         conn.commit()

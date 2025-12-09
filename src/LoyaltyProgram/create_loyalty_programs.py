@@ -5,14 +5,11 @@ from dotenv import load_dotenv
 import os
 
 from helper.utils import check_role, get_curr_bid
+from .prog_func import *
 
 load_dotenv()
 
 loyalty_prog = Blueprint('loyalty_prog', __name__)
-
-
-
-
 
 def get_db():
 
@@ -28,9 +25,6 @@ def get_db():
     except mysql.connector.Error as err:
         print(f"Error: Database could not connect. : {err}")
         return None
-
-
-
 
 #Salon Owner can create loyalty programs
 @loyalty_prog.route("/api/owner/create-loyalty-programs", methods=["POST"])
@@ -49,6 +43,7 @@ def create_lprogs():
     prog_type = data.get("prog_type")
     reward_type = data.get("reward_type")
     reward_value = data.get("rwd_value")
+    description = data.get("description")
 
     allowed_prog_types = ["appts_thresh", "pdct_thresh","points_thresh", "price_thresh"]
     if prog_type not in allowed_prog_types:
@@ -72,21 +67,16 @@ def create_lprogs():
 
         #f string: cleanly insert prog_type into query
         query_lprog = f"""
-        insert into loyalty_programs(bid, {prog_type}, threshold)
-        values(%s, %s, %s);
-         """
-        cursor.execute(query_lprog, (business_id, True, threshold))
+        insert into loyalty_programs(bid, {prog_type}, threshold, description)
+        values(%s, %s, %s, %s);
+        """
+        cursor.execute(query_lprog, (business_id, True, threshold, description))
         lprog_id = cursor.lastrowid
         query_rwd = f"""
         insert into rewards(bid, lprog_id, {reward_type}, rwd_value)
         values(%s,%s, %s, %s);
-         """
+        """
         cursor.execute(query_rwd, (business_id, lprog_id, True, reward_value))
-
-        cursor.execute(
-            "UPDATE customer_loyalty_points SET pts_balance = 0 WHERE bid = %s",
-            (business_id,),
-        )
         db.commit()
         return jsonify({"message": "Loyalty program created successfully.", "lprog_id": lprog_id }), 201
     except mysql.connector.Error as err:

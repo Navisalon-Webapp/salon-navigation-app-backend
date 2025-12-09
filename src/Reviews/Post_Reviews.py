@@ -57,6 +57,34 @@ def get_business_id():
         if db:
             db.close()
 
+def get_cid():
+    uid = getattr(current_user, 'id', None)
+    if uid is None:
+        print("Error: No UID found in request context.")
+        return None
+    
+    db = get_db()
+    if db is None:
+        print("Error: Could not establish connection to the database.")
+        return None
+    cursor = db.cursor(buffered=True)
+    try:
+        query = "select cid from customers where uid = %s;"
+        cursor.execute(query, (uid,))
+        result = cursor.fetchone()
+        if result:
+            customer_id = result[0]
+            return customer_id
+        else:
+            print("Error: No customer found for the given UID.")
+            return None
+    except mysql.connector.Error as err:
+        print(f"Error: Database query failed. : {err}")
+        return None
+    finally:
+        cursor.close()
+        db.close()
+
 @post_reviews.route("/api/client/get-reviews/<int:business_id>", methods=["GET"])
 def get_business_reviews_public(business_id):
     db = None
@@ -208,7 +236,8 @@ def leave_review():
 
     requirements = ["bid", "cid", "rating", "comment"]
 
-    customer_id = data.get("cid")
+    uid = data.get("cid")
+    cid = get_cid()
     rating = data.get("rating")
     business_id = data.get("bid")
     comment = data.get("comment")
@@ -232,7 +261,7 @@ def leave_review():
         insert into reviews(bid, cid, rating, comment)
         values(%s, %s, %s, %s);
         """
-        cursor.execute(query, (business_id, customer_id, rating, comment))
+        cursor.execute(query, (business_id, cid, rating, comment))
         db.commit() 
         return jsonify({"message": "Review submitted successfully."}), 201
     except mysql.connector.Error as err:
