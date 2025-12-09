@@ -42,9 +42,11 @@ class TestCustomerSignup:
                          data=json.dumps(payload),
                          content_type='application/json')
         assert res.status_code == 400
+        
         data = json.loads(res.data)
-        assert data['status'] == 'failure'
-
+        assert data['status'] == 'error'
+        assert data['message'] == 'firstName'
+        
     def test_customer_signup_missing_last_name(self, client):
         """Test signup fails with missing last name."""
         payload = {
