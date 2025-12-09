@@ -201,7 +201,7 @@ def insert_Worker(uid, data):
 
     insert uid and 3 into users_roles table
     
-    insert expertise into employee_expertise table
+    insert services into employee_services table
     """
     conn = None
     cursor = None
@@ -209,12 +209,15 @@ def insert_Worker(uid, data):
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         cursor.execute("UPDATE users SET phone = %s WHERE uid = %s;", [data['phoneNumber'], uid])
-        cursor.execute("SELECT bid FROM business WHERE name = %s;", [data['salonName']])
+        cursor.execute("SELECT bid, status FROM business WHERE name = %s;", [data['salonName']])
         result = cursor.fetchone()
         param = [uid]
         if(result is None):
             cursor.execute("INSERT INTO employee (uid) VALUES (%s);",param)
         else:
+            # Check if business is approved before allowing employee to join
+            if not result['status']:
+                raise Exception("Cannot join salon - business is not yet approved by admin")
             param += [result['bid'], data['startYear']]
             cursor.execute("INSERT INTO employee (uid, bid, start_year) VALUES (%s, %s, %s);",param)
         eid = cursor.lastrowid
@@ -426,3 +429,51 @@ def update_active(uid):
         conn.close()
     
     return jsonify({"status": "success", "user": uid}), 200
+
+def check_business_approval(uid):
+    """Check if a business account has been approved by admin"""
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT status FROM business WHERE uid = %s
+        """, (uid,))
+        result = cursor.fetchone()
+        return result['status'] if result else False
+    except mysql.connector.Error as e:
+        print(f"Database Error {e}")
+        return False
+    except Exception as e:
+        print(f"Error {e}")
+        return False
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+def check_employee_approval(uid):
+    """Check if an employee account has been approved by their salon"""
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT approved FROM employee WHERE uid = %s
+        """, (uid,))
+        result = cursor.fetchone()
+        return result['approved'] if result else False
+    except mysql.connector.Error as e:
+        print(f"Database Error {e}")
+        return False
+    except Exception as e:
+        print(f"Error {e}")
+        return False
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()

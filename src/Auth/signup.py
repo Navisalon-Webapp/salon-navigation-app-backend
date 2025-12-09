@@ -8,6 +8,16 @@ def getClientSignUp():
     try:
         data=request.get_json()
 
+        # Validate required fields first - ALL fields are required for customer signup
+        required_fields = ['firstName', 'lastName', 'email', 'password', 'confirmPassword', 
+                          'phoneNumber', 'birthDate', 'gender', 'industry', 'income']
+        missing_fields = [field for field in required_fields if not data.get(field) or data.get(field) == '']
+        if missing_fields:
+            return jsonify({
+                "status": "failure",
+                "message": f"Missing required fields: {', '.join(missing_fields)}"
+            }), 400
+
         if(valid_email(data['email'])==False):
             return jsonify({
                 "status": "failure",
@@ -28,6 +38,7 @@ def getClientSignUp():
                 "confirmPassword": data['confirmPassword']
             }), 400
 
+        # All fields are validated and present, proceed with account creation
         uid = insert_Auth(data['firstName'],data['lastName'],data['email'],data['password'])
         if not isinstance(uid, int):
             raise Exception("Failed to create user account")
@@ -57,6 +68,16 @@ def getClientSignUp():
 def getBusinessSignUp():
     try:
         data=request.get_json()
+        
+        # Validate required fields first
+        required_fields = ['firstName', 'lastName', 'email', 'password', 'confirmPassword', 'businessName']
+        missing_fields = [field for field in required_fields if not data.get(field) or data.get(field) == '']
+        if missing_fields:
+            return jsonify({
+                "status": "failure",
+                "message": f"Missing required fields: {', '.join(missing_fields)}"
+            }), 400
+        
         # print(data)
         if(valid_email(data['email'])==False):
             return jsonify({
@@ -102,6 +123,16 @@ def getBusinessSignUp():
 def getEmployeeSignUp():
     try:
         data=request.get_json()
+        
+        # Validate required fields first
+        required_fields = ['firstName', 'lastName', 'email', 'password', 'confirmPassword']
+        missing_fields = [field for field in required_fields if not data.get(field) or data.get(field) == '']
+        if missing_fields:
+            return jsonify({
+                "status": "failure",
+                "message": f"Missing required fields: {', '.join(missing_fields)}"
+            }), 400
+        
         # print(data)
         if(valid_email(data['email'])==False):
             return jsonify({
@@ -144,6 +175,16 @@ def getEmployeeSignUp():
 def getAdminSignUp():
     try:
         data=request.get_json()
+        
+        # Validate required fields first
+        required_fields = ['firstName', 'lastName', 'email', 'password', 'confirmPassword']
+        missing_fields = [field for field in required_fields if not data.get(field) or data.get(field) == '']
+        if missing_fields:
+            return jsonify({
+                "status": "failure",
+                "message": f"Missing required fields: {', '.join(missing_fields)}"
+            }), 400
+        
         if(valid_email(data['email'])==False):
             return jsonify({
                 "status": "failure",

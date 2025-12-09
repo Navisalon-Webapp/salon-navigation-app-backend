@@ -39,6 +39,7 @@ def browse_salons():
         FROM business b
         JOIN addresses a ON b.aid = a.aid
         LEFT JOIN services s ON b.bid = s.bid
+        WHERE b.status = TRUE
         GROUP BY b.bid
     """
     db = None
@@ -85,7 +86,7 @@ def browse_workers():
         JOIN users u ON e.uid = u.uid
         JOIN business b ON e.bid = b.bid
         JOIN addresses a ON b.aid = a.aid
-        WHERE e.approved = true
+        WHERE e.approved = true AND b.status = TRUE
         GROUP BY e.eid
     """
     db = None
@@ -126,14 +127,14 @@ def get_business_workers(business_id: int):
         SELECT e.eid,
                u.first_name,
                u.last_name,
-               GROUP_CONCAT(DISTINCT ex.expertise ORDER BY ex.expertise SEPARATOR ', ') AS expertise,
+               GROUP_CONCAT(DISTINCT s.name ORDER BY s.name SEPARATOR ', ') AS expertise,
                e.bio,
                e.profile_picture,
                e.approved
         FROM employee e
         JOIN users u ON e.uid = u.uid
-        LEFT JOIN employee_expertise ee ON e.eid = ee.eid
-        LEFT JOIN expertise ex ON ee.exp_id = ex.exp_id
+        LEFT JOIN employee_services es ON e.eid = es.eid
+        LEFT JOIN services s ON es.sid = s.sid
         WHERE e.bid = %s
         GROUP BY e.eid, u.first_name, u.last_name, e.bio, e.profile_picture, e.approved
         ORDER BY u.first_name, u.last_name
@@ -392,7 +393,7 @@ def get_business_info(business_id):
         FROM business b
         JOIN addresses a ON b.aid = a.aid
         JOIN users u ON b.uid = u.uid
-        WHERE b.bid = %s
+        WHERE b.bid = %s AND b.status = TRUE
         """
         cursor.execute(business_query, (business_id,))
         business = cursor.fetchone()

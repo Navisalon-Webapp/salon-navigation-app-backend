@@ -305,7 +305,7 @@ def process_checkout():
             SELECT pts_value FROM loyalty_points WHERE bid=%s
         """, (bid,),)
         pts_row = cursor.fetchone()
-        pts_value = Decimal(pts_row["pts_value"]) if pts_row else 1.0
+        pts_value = Decimal(pts_row["pts_value"]) if pts_row else Decimal("1.0")
 
         points_earned = final_amount * pts_value
 

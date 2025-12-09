@@ -1,7 +1,7 @@
 query_future_appointments = """
 select c.uid as c_uid, c.cid, cu.first_name as customer_first, cu.last_name as customer_last, auth.email,
 e.uid as e_uid, e.eid, eu.first_name as employee_first, eu.last_name as employee_last,
-s.sid, s.name as service, s.durationMin,
+s.sid, s.name as service, s.duration as durationMin,
 a.aid, a.start_time, a.expected_end_time,
 an.note_text as note
 from salon_app.appointments as a
@@ -20,7 +20,7 @@ order by start_time;
 query_past_appointments = """
 select c.uid as c_uid, c.cid, cu.first_name as customer_first, cu.last_name as customer_last, auth.email,
 e.uid as e_uid, e.eid, eu.first_name as employee_first, eu.last_name as employee_last,
-s.sid, s.name as service, s.durationMin,
+s.sid, s.name as service, s.duration as durationMin,
 a.aid, a.start_time, a.end_time,
 an.note_text as note
 from salon_app.appointments as a

@@ -1,10 +1,9 @@
 from flask import Blueprint, request, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
-from helper.utils import get_curr_eid
 from .auth_func import  *
 from .User import User
 from src.Notifications.notification_func import send_password_reset
-from helper.utils import get_email, check_role, get_curr_bid, get_curr_cid, get_curr_eid
+from helper.utils import get_email
 
 signin = Blueprint("signin", __name__, url_prefix='')
 
@@ -43,6 +42,23 @@ def getSignin():
         
         uid = get_uid(data['email'])
         user_info = get_user_info(uid['uid'])
+        
+        # Check approval status for business owners and employees
+        if user_info['name'] == 'business':
+            approval_status = check_business_approval(uid['uid'])
+            if not approval_status:
+                return jsonify({
+                    "status": "failure",
+                    "message": "Your business account is pending admin approval. You will be notified once approved."
+                }), 403
+        elif user_info['name'] == 'employee':
+            approval_status = check_employee_approval(uid['uid'])
+            if not approval_status:
+                return jsonify({
+                    "status": "failure",
+                    "message": "Your employee account is pending salon approval. You will be notified once approved."
+                }), 403
+        
         user = User(
             id = user_info['uid'],
             email = user_info['email'],
@@ -51,21 +67,13 @@ def getSignin():
             role = user_info['name']
         )
         login_user(user, remember=False)
-        update_active(user_info['uid'])
-        employee_id = None
-        if current_user.role == "employee":
-            try:
-                employee_id = str(get_curr_eid())
-            except Exception as e:
-                print(f"Failed to resolve employee id during signin: {e}")
 
         print("account verified")
         return jsonify({
             "status":"success",
             "message":"signed in",
             "User_ID": current_user.id,
-            "role": current_user.role,
-            "employee_id": employee_id
+            "role": current_user.role
         }), 200
     except Exception as e:
         print("error", e)
@@ -108,11 +116,18 @@ def reset_password_email():
             "email": data['email']
         }), 401
     uid = get_uid(email)
-    # Return the uid so frontend can redirect directly to reset page
+    email_sent = send_password_reset(email, uid['uid'])
+    
+    if not email_sent:
+        return jsonify({
+            "status":"failure",
+            "message":"Failed to send email. Email service is currently unavailable."
+        }), 503
+    
     return jsonify({
         "status":"success",
-        "message":"email verified",
-        "uid": uid['uid']
+        "message":"password reset link sent",
+        "recipient":email
     }), 200
 
 @signin.route('/password-reset', methods=['POST'])
@@ -151,30 +166,39 @@ def reset_password():
         "email":email
     }), 200
     
+    
+
+    
+    
+
 @signin.route('/user-session', methods=['GET'])
 @login_required
 def get_user_session():
-    payload = {
+    response_data = {
         "User_ID": current_user.id,
         "email": current_user.email,
         "first name": current_user.firstName,
         "last name": current_user.lastName,
         "role": current_user.role
     }
-    role = current_user.role
-    if role == 'customer':
-        payload['customer_id'] = get_curr_cid()
-    elif role == 'business':
-        payload['business_id'] = get_curr_bid()
-    elif role == 'employee':
-        payload['employee_id'] = get_curr_eid()
-    elif role == 'admin':
-        pass
-    else:
-        logout_user()
-        return jsonify({
-            "status":"failure",
-            "message":"account error",
-            "action": "logged out"
-        }), 401
-    return jsonify(payload), 200
+    
+    # Add employeeId for employee users
+    if current_user.role == "employee":
+        conn = None
+        cursor = None
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT eid FROM employee WHERE uid = %s", (current_user.id,))
+            result = cursor.fetchone()
+            if result:
+                response_data["employee_id"] = result["eid"]
+        except Exception as e:
+            print(f"Error fetching employeeId: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()
+    
+    return jsonify(response_data)
