@@ -70,7 +70,7 @@ def getBusinessSignUp():
         data=request.get_json()
         
         # Validate required fields first
-        required_fields = ['firstName', 'lastName', 'email', 'password', 'confirmPassword', 'businessName']
+        required_fields = ['firstName', 'lastName', 'email', 'password', 'confirmPassword', 'salonName']
         missing_fields = [field for field in required_fields if not data.get(field) or data.get(field) == '']
         if missing_fields:
             return jsonify({
