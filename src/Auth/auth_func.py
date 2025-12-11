@@ -36,7 +36,7 @@ def verify_email(email):
     cursor = None
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor(dictionary=True, buffered=True)
         cursor.execute("SELECT uid FROM authenticate where email =  %s limit 1;", [email])
         result = cursor.fetchone()
     except mysql.connector.Error as e:
@@ -285,7 +285,7 @@ def get_Auth(email):
     cursor = None
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor(dictionary=True, buffered=True)
         cursor.execute("SELECT * FROM authenticate WHERE email = %s", [email])
         result = cursor.fetchone()
         return result
@@ -337,7 +337,7 @@ def get_uid(email):
     cursor = None
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor(dictionary=True, buffered=True)
         cursor.execute("SELECT uid FROM authenticate WHERE email = %s", [email])
         result = cursor.fetchone()
         return result
@@ -356,7 +356,7 @@ def get_user_info(uid):
     cursor = None
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor(dictionary=True, buffered=True)
         cursor.execute(query_user_info,[uid])
         result = cursor.fetchone()
         return result
@@ -375,7 +375,7 @@ def get_role(uid):
     cursor = None
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor(dictionary=True, buffered=True)
         cursor.execute("SELECT name FROM roles LEFT JOIN users_roles ON roles.rid=users_roles.rid WHERE uid = %s", [uid])
         result = cursor.fetchone()
         return result
@@ -436,7 +436,7 @@ def check_business_approval(uid):
     cursor = None
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor(dictionary=True, buffered=True)
         cursor.execute("""
             SELECT status FROM business WHERE uid = %s
         """, (uid,))
@@ -460,7 +460,7 @@ def check_employee_approval(uid):
     cursor = None
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor(dictionary=True, buffered=True)
         cursor.execute("""
             SELECT approved FROM employee WHERE uid = %s
         """, (uid,))
