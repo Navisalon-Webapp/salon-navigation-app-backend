@@ -10,6 +10,7 @@ Flask-APScheduler==1.13.1
 flask-cors==6.0.1
 Flask-Login==0.6.3
 Flask-Mail==0.10.0
+flask-swagger-ui==4.11.1
 idna==3.11
 iniconfig==2.3.0
 itsdangerous==2.2.0

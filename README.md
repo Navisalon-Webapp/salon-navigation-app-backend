@@ -1,6 +1,10 @@
 # salon-navigation-app-backend
 Backend for Navisalon web app
 
+## API Documentation
+
+- Swagger UI is available at `http://localhost:5000/docs/` when the Flask app is running.
+
 ## Loyalty Program Endpoints
 
 - `POST /api/loyalty/earn` – award loyalty points for a completed appointment. Accepts `appointmentId` and an optional `points` override. Requires authentication.
