@@ -31,13 +31,13 @@ def get_salon_details_by_uid(uid):
     conn.close()
     return result
 
-def update_salon_details_by_uid(uid, name, status, street, city, state, zip_code):
+def update_salon_details_by_uid(uid, name, status, street, city, state, zip_code, year_est):
     conn = get_db_connection()
     
     try:
         # Use separate cursors for each query to avoid buffering issues
         cursor1 = conn.cursor(dictionary=True, buffered=True)
-        cursor1.execute(update_salon_basic, [name, status, uid])
+        cursor1.execute(update_salon_basic, [name, status, year_est, uid])
         cursor1.close()
         
         cursor2 = conn.cursor(dictionary=True, buffered=True)

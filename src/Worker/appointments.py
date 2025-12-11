@@ -39,10 +39,11 @@ def list_appointments():
             "time": time_str,
             "client": f"{appt.get('first_name', '')} {appt.get('last_name', '')}".strip() or "Unknown Client",
             "service": appt.get('service_name', 'N/A'),
-            "durationMins": appt.get('durationMin', 60),
-            "notes": appt.get('notes', ''),
+            "duration": appt.get('duration', 60),
             "status": "scheduled"
         })
+
+        # loop through rows to append notes
     
     return jsonify(formatted_appointments), 200
 
@@ -67,7 +68,7 @@ def list_past_appointments():
     cursor = conn.cursor(dictionary=True, buffered=True)
     
     query = """
-    SELECT a.aid, a.start_time, a.expected_end_time, a.notes, u.first_name, u.last_name, s.name as service_name, s.durationMin
+    SELECT a.aid, a.start_time, a.expected_end_time, u.first_name, u.last_name, s.name as service_name, s.duration
     FROM appointments a
     LEFT JOIN customers c ON a.cid = c.cid
     LEFT JOIN users u ON c.uid = u.uid
@@ -98,8 +99,7 @@ def list_past_appointments():
             "date": date_str,
             "client": f"{appt.get('first_name', '')} {appt.get('last_name', '')}".strip() or "Unknown Client",
             "service": appt.get('service_name', 'N/A'),
-            "durationMins": appt.get('durationMin', 60),
-            "notes": appt.get('notes', ''),
+            "duration": appt.get('duration', 60),
             "status": "completed"
         })
     
@@ -127,7 +127,7 @@ def list_future_appointments():
     cursor = conn.cursor(dictionary=True, buffered=True)
     
     query = """
-    SELECT a.aid, a.start_time, a.expected_end_time, a.notes, u.first_name, u.last_name, s.name as service_name, s.durationMin
+    SELECT a.aid, a.start_time, a.expected_end_time, u.first_name, u.last_name, s.name as service_name, s.duration
     FROM appointments a
     LEFT JOIN customers c ON a.cid = c.cid
     LEFT JOIN users u ON c.uid = u.uid
@@ -158,7 +158,7 @@ def list_future_appointments():
             "date": date_str,
             "client": f"{appt.get('first_name', '')} {appt.get('last_name', '')}".strip() or "Unknown Client",
             "service": appt.get('service_name', 'N/A'),
-            "durationMins": appt.get('durationMin', 60),
+            "duration": appt.get('duration', 60),
             "notes": appt.get('notes', ''),
             "status": "scheduled"
         })

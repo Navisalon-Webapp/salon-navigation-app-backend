@@ -28,6 +28,7 @@ from src.Salon.approve_workers import approve_workers
 from src.Notifications.notifications import notification
 from src.Admin.verifysalon import verifysalon
 from src.LoyaltyProgram.create_loyalty_programs import loyalty_prog
+from src.LoyaltyProgram.loyalty_points import loyalty_points
 from src.Promotions.create_promos import promotions
 from src.Clients.Clients_Review.Clients_Review_Workers import review_workers
 from src.ViewVisitHistory.owner_view_visit_history import visit_hist
@@ -204,12 +205,15 @@ CORS(
     resources={r"/*": {"origins": ["http://localhost:5173", "https://salon-navigation-app-frontend-hdhc.vercel.app", r"https://.*vercel\.app"]}}
 )
 
+# Detect if running in production (on Render)
+is_production = os.getenv("RENDER") is not None or os.getenv("PRODUCTION") == "true"
+
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SAMESITE="Lax",
-    SESSION_COOKIE_SECURE=False,
+    SESSION_COOKIE_SAMESITE="None" if is_production else "Lax",
+    SESSION_COOKIE_SECURE=True if is_production else False,
 )
- 
+
 app.config['MAIL_SERVER']='smtp.gmail.com'
 app.config['MAIL_PORT'] = 465
 app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
@@ -242,6 +246,7 @@ app.register_blueprint(approve_workers)
 app.register_blueprint(notification)
 app.register_blueprint(verifysalon)
 app.register_blueprint(loyalty_prog)
+app.register_blueprint(loyalty_points)
 app.register_blueprint(promotions)
 app.register_blueprint(review_workers)
 app.register_blueprint(visit_hist)

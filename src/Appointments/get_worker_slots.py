@@ -23,13 +23,15 @@ def get_available_slots(eid):
         return jsonify({"status": "failure", "message": "duration parameter required"}), 400
     
     try:
+        if duration_str == 'null':
+            duration_str = '30'
         service_duration = int(duration_str)
     except ValueError:
         return jsonify({"status": "failure", "message": "duration must be a number"}), 400
     
     try:
         request_date = datetime.strptime(date_str, "%Y-%m-%d")
-        day_of_week = request_date.strftime("%a")  # Short day name like "Mon", "Tue"
+        day_of_week = request_date.strftime("%A").lower()  # Short day name like "Mon", "Tue"
     except ValueError:
         return jsonify({"status": "failure", "message": "invalid date format, use YYYY-MM-DD"}), 400
     

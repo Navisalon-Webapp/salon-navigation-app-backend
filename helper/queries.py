@@ -23,7 +23,7 @@ query_appointment = """
 select c.uid as c_uid, c.cid, cu.first_name as customer_first, cu.last_name as customer_last, auth.email,
 e.uid as e_uid, e.eid, eu.first_name as employee_first, eu.last_name as employee_last,
 b.uid as b_uid, b.bid, b.name as salon, ba.street, ba.city, ba.state, ba.country, ba.zip_code,
-s.sid, s.name as service, s.durationMin,
+s.sid, s.name as service, s.duration,
 a.aid, a.start_time, a.expected_end_time
 from salon_app.appointments as a
 join salon_app.customers c on a.cid=c.cid

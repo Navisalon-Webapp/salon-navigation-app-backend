@@ -84,7 +84,7 @@ def view_cart():
         
         query = """
         select c.cart_id, c.pid, p.name, p.price, c.amount, (p.price * c.amount) as total,
-               b.name as business_name, p.image
+               b.name as business_name, b.bid, p.image
         from cart c 
         join products p on c.pid = p.pid
         join business b on p.bid = b.bid
@@ -94,7 +94,7 @@ def view_cart():
         results = cursor.fetchall()
         cart_items = []
         for row in results:
-            cart_id, pid, name, price, amount, total, business_name, image = row
+            cart_id, pid, name, price, amount, total, business_name, bid, image = row
             cart_items.append({
                 "cart_id": cart_id,
                 "pid": pid,
@@ -103,6 +103,7 @@ def view_cart():
                 "amount": amount,
                 "total": float(total),
                 "business_name": business_name,
+                "bid": bid,
                 "image": image.decode('utf-8') if image else None
             })
         return jsonify({"cart_items": cart_items}), 200
