@@ -97,21 +97,32 @@ def get_transactions():
 @transaction.route('/transactions/checkout/', methods=["POST"])
 @login_required
 def process_checkout():
-    data = request.get_json()
+    data = request.get_json() or {}
     cid = get_cid()
     bid = data.get("bid")
     payment_method_id = data.get("payment_method_id")
-    is_product_purchase = data.get("is_product_purchase", False)
+    is_product_purchase = bool(data.get("is_product_purchase", False))
+    aid = data.get("aid")
 
-    if not (cid and bid and payment_method_id):
+    if not cid or not payment_method_id:
         return jsonify({"error": "Missing required fields"}), 400
 
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
+    def to_decimal(val) -> Decimal:
+        return Decimal(str(val or 0))
+
     try:
-        # Checkout subtotal from products
+        cart_items = []
+        appointment_id = None
+        original_amount = Decimal("0")
+        sing_disc = Decimal("0")
+
         if is_product_purchase:
+            if not bid:
+                return jsonify({"error": "Missing business id"}), 400
+
             cursor.execute("""
                 SELECT c.pid, c.amount, p.price
                 FROM cart c
@@ -124,73 +135,95 @@ def process_checkout():
             if not cart_items:
                 return jsonify({"error": "Cart is empty"}), 400
 
-            original_amount = sum(item["amount"] * item["price"] for item in cart_items)
-            sing_disc = cart_items[0]["price"]
-            appointment_id = None
+            original_amount = sum(to_decimal(item["amount"]) * to_decimal(item["price"]) for item in cart_items)
+            sing_disc = to_decimal(cart_items[0]["price"])
 
         else:
-            # Checkout subtotal from appointments
-            cursor.execute("""
-                SELECT a.aid, s.price
-                FROM appointments a
-                JOIN services s ON s.sid=a.sid
-                WHERE a.cid = %s AND a.bid = %s AND a.status = 'pending_payment'
-                ORDER BY a.created_at DESC LIMIT 1
-            """, (cid, bid))
-            appt = cursor.fetchone()
+            if aid:
+                cursor.execute("""
+                    SELECT a.aid, a.bid, s.price
+                    FROM appointments a
+                    JOIN services s ON s.sid = a.sid
+                    WHERE a.cid = %s AND a.aid = %s
+                """, (cid, aid))
+            else:
+                if not bid:
+                    return jsonify({"error": "Missing business id"}), 400
+                cursor.execute("""
+                    SELECT a.aid, a.bid, s.price
+                    FROM appointments a
+                    JOIN services s ON s.sid=a.sid
+                    WHERE a.cid = %s AND a.bid = %s
+                    ORDER BY a.created_at DESC LIMIT 1
+                """, (cid, bid))
 
+            appt = cursor.fetchone()
             if not appt:
                 return jsonify({"error": "No appointment found"}), 400
 
-            original_amount = appt["price"]
-            sing_disc = appt["price"]
             appointment_id = appt["aid"]
+            bid = bid or appt["bid"]
+            appointment_price = to_decimal(appt["price"])
+
+            cursor.execute("""
+                SELECT COALESCE(SUM(amount), 0) AS paid_amount
+                FROM transactions
+                WHERE aid=%s AND payment_method_id IS NOT NULL
+            """, (appointment_id,))
+            paid_row = cursor.fetchone() or {}
+            already_paid = to_decimal(paid_row.get("paid_amount", 0))
+
+            original_amount = appointment_price - already_paid
+            if original_amount <= Decimal("0"):
+                return jsonify({"error": "Appointment already paid"}), 400
+
+            sing_disc = original_amount
 
         cursor.execute("""
             SELECT p.lprog_id, p.title, p.description, l.pts_value,
-            r.is_appt, r.is_product, r.is_price, r.is_points, r.is_discount, r.rwd_value
+                   r.is_appt, r.is_product, r.is_price, r.is_points, r.is_discount, r.rwd_value
             FROM promotions p
             JOIN loyalty_programs lp ON lp.lprog_id = p.lprog_id
             JOIN rewards r ON r.lprog_id = p.lprog_id
             JOIN loyalty_points l on l.bid = lp.bid
             WHERE lp.bid=%s
-                AND start_date <= CURDATE()
-                AND end_date >= CURDATE()
-                AND (
+              AND start_date <= CURDATE()
+              AND end_date >= CURDATE()
+              AND (
                     is_recurring = 0
                     OR (
                         FIND_IN_SET(DAYOFWEEK(CURDATE()), recurr_days)
                         AND CURTIME() BETWEEN start_time AND end_time
                     )
-                )
+                 )
         """, (bid,))
         promotions = cursor.fetchall()
 
-        promo_discount = 0
+        promo_discount = Decimal("0")
         applied_promo_lprog = None
 
         for p in promotions:
-            if p["is_appt"]:
-                promo_discount += Decimal(p["rwd_value"]) * Decimal(sing_disc)
+            reward_val = to_decimal(p["rwd_value"])
+            if p["is_appt"] and not is_product_purchase:
+                promo_discount += reward_val * sing_disc
                 applied_promo_lprog = p["lprog_id"]
-            if p["is_product"]:
-                promo_discount += Decimal(p["rwd_value"]) * Decimal(sing_disc)
+            if p["is_product"] and is_product_purchase:
+                promo_discount += reward_val * sing_disc
                 applied_promo_lprog = p["lprog_id"]
             if p["is_price"]:
-                promo_discount += Decimal(p["rwd_value"])
+                promo_discount += reward_val
                 applied_promo_lprog = p["lprog_id"]
             if p["is_points"]:
-                promo_discount += Decimal(p["rwd_value"]) * Decimal(p["pts_value"])
+                promo_discount += reward_val * to_decimal(p["pts_value"])
                 applied_promo_lprog = p["lprog_id"]
             if p["is_discount"]:
-                promo_discount += Decimal(p["rwd_value"]) * Decimal(.01) * Decimal(original_amount)
+                promo_discount += reward_val * Decimal("0.01") * original_amount
                 applied_promo_lprog = p["lprog_id"]
-            
 
         cursor.execute("""
             SELECT lp.lprog_id, lp.description, c.pts_balance, c.appt_complete, c.prod_purchased, c.amount_spent,
-            lp.appts_thresh, lp.pdct_thresh, lp.price_thresh, lp.points_thresh, lp.threshold,
-            r.is_appt, r.is_product, r.is_price, r.is_points, r.is_discount, r.rwd_value, l.pts_value
+                   lp.appts_thresh, lp.pdct_thresh, lp.price_thresh, lp.points_thresh, lp.threshold,
+                   r.is_appt, r.is_product, r.is_price, r.is_points, r.is_discount, r.rwd_value, l.pts_value
             FROM customer_loyalty_points c
             JOIN loyalty_programs lp ON lp.bid = c.bid
             JOIN rewards r ON r.lprog_id = lp.lprog_id
@@ -199,7 +232,7 @@ def process_checkout():
         """, (cid, bid))
         reward_rows = cursor.fetchall()
 
-        loyalty_discount = 0
+        loyalty_discount = Decimal("0")
         loyalty_redeemed_lprog = None
         thresh_met = []
 
@@ -214,67 +247,57 @@ def process_checkout():
                 thresh_met.append(r)
 
         for r in thresh_met:
-            # appointment reward
-            if not is_product_purchase and r["is_appt"] and (r["threshold"] > 0):
-                loyalty_discount += Decimal(r["rwd_value"]) * Decimal(sing_disc)
+            reward_val = to_decimal(r["rwd_value"])
+            if not is_product_purchase and r["is_appt"] and r["threshold"] > 0:
+                loyalty_discount += reward_val * sing_disc
                 loyalty_redeemed_lprog = r["lprog_id"]
-
-                # deduct appointments completed from balance
                 cursor.execute("""
                     UPDATE customer_loyalty_points
                     SET appt_complete = appt_complete - %s
                     WHERE cid=%s AND bid=%s
-                """, (loyalty_discount, cid, bid))
+                """, (float(r["threshold"]), cid, bid))
 
-            # product reward
-            if is_product_purchase and r["is_product"] and (r["threshold"] > 0):
-                loyalty_discount += Decimal(r["rwd_value"]) * Decimal(sing_disc)
+            if is_product_purchase and r["is_product"] and r["threshold"] > 0:
+                loyalty_discount += reward_val * sing_disc
                 loyalty_redeemed_lprog = r["lprog_id"]
-                
-                # deduct products purchased from balance
                 cursor.execute("""
                     UPDATE customer_loyalty_points
                     SET prod_purchased = prod_purchased - %s
                     WHERE cid=%s AND bid=%s
-                """, (loyalty_discount, cid, bid))
+                """, (float(r["threshold"]), cid, bid))
 
-            # price reward
-            if r["is_price"] and (r["threshold"] > 0):
-                loyalty_discount += Decimal(r["rwd_value"])
+            if r["is_price"] and r["threshold"] > 0:
+                loyalty_discount += reward_val
                 loyalty_redeemed_lprog = r["lprog_id"]
-
-                # deduct amount spent from balance
                 cursor.execute("""
                     UPDATE customer_loyalty_points
                     SET amount_spent = amount_spent - %s
                     WHERE cid=%s AND bid=%s
-                """, (loyalty_discount, cid, bid))
-            
-            # discount reward
-            if r["is_discount"] and (r["threshold"] > 0):
-                loyalty_discount += Decimal(r["rwd_value"]) * Decimal(.01) * Decimal(original_amount)
+                """, (float(reward_val), cid, bid))
+
+            if r["is_discount"] and r["threshold"] > 0:
+                loyalty_discount += reward_val * Decimal("0.01") * original_amount
                 loyalty_redeemed_lprog = r["lprog_id"]
 
-            # points redemption
-            if r["is_points"] and (r["threshold"] > 0):
-                loyalty_discount += Decimal(r["rwd_value"]) * Decimal(p["pts_value"])
+            if r["is_points"] and r["threshold"] > 0:
+                loyalty_discount += reward_val * to_decimal(r["pts_value"])
                 loyalty_redeemed_lprog = r["lprog_id"]
-
-                # deduct points from balance
                 cursor.execute("""
                     UPDATE customer_loyalty_points
                     SET pts_balance = pts_balance - %s
                     WHERE cid=%s AND bid=%s
-                """, (loyalty_discount, cid, bid))
+                """, (float(reward_val * to_decimal(r["pts_value"])), cid, bid))
 
-        tax = original_amount * TAX_RATE
-        total_discount = promo_discount + loyalty_discount
-        final_amount = max(0, round(original_amount + tax - total_discount, 2))
+        tax = (original_amount * TAX_RATE).quantize(Decimal("0.01"))
+        total_discount = (promo_discount + loyalty_discount).quantize(Decimal("0.01"))
+        final_amount = (original_amount + tax - total_discount).quantize(Decimal("0.01"))
+        if final_amount < Decimal("0"):
+            final_amount = Decimal("0.00")
 
         cursor.execute("""
             INSERT INTO transactions (cid, bid, aid, amount, payment_method_id)
             VALUES (%s, %s, %s, %s, %s)
-        """, (cid, bid, appointment_id, final_amount, payment_method_id))
+        """, (cid, bid, appointment_id, float(final_amount), payment_method_id))
         trans_id = cursor.lastrowid
 
         if is_product_purchase:
@@ -285,16 +308,16 @@ def process_checkout():
                 """, (trans_id, item["pid"], item["amount"]))
 
                 cursor.execute("""
-                    SELECT name, stock
+                    SELECT stock
                     FROM products
                     WHERE pid=%s
                 """, (item["pid"],))
-                product_stock = cursor.fetchall()
+                product_stock = cursor.fetchone()
 
-                for product in product_stock:
-                    if product["stock"] < item["amount"]:
-                        return jsonify({"error": "Not enough stock to complete purchase"}), 400
-                
+                if product_stock and product_stock["stock"] < item["amount"]:
+                    conn.rollback()
+                    return jsonify({"error": "Not enough stock to complete purchase"}), 400
+
                 cursor.execute("""
                     UPDATE products
                     SET stock = stock - %s
@@ -303,11 +326,11 @@ def process_checkout():
 
         cursor.execute("""
             SELECT pts_value FROM loyalty_points WHERE bid=%s
-        """, (bid,),)
+        """, (bid,))
         pts_row = cursor.fetchone()
-        pts_value = Decimal(pts_row["pts_value"]) if pts_row else Decimal("1.0")
+        pts_value = to_decimal(pts_row["pts_value"]) if pts_row else Decimal("1.0")
 
-        points_earned = final_amount * pts_value
+        points_earned = (final_amount * pts_value).quantize(Decimal("0.01"))
 
         cursor.execute("""
             UPDATE customer_loyalty_points
@@ -317,10 +340,10 @@ def process_checkout():
                 amount_spent = amount_spent + %s
             WHERE cid=%s AND bid=%s
         """, (
-            points_earned,
+            float(points_earned),
             len(cart_items) if is_product_purchase else 0,
             0 if is_product_purchase else 1,
-            final_amount,
+            float(final_amount),
             cid,
             bid
         ))
@@ -329,30 +352,38 @@ def process_checkout():
             cursor.execute("""
                 INSERT INTO loyalty_transactions (cid, trans_id, lprog_id, val_earned, val_redeemed)
                 VALUES (%s, %s, %s, %s, %s)
-            """, (cid, trans_id, applied_promo_lprog, total_discount, promo_discount))
+            """, (cid, trans_id, applied_promo_lprog, float(total_discount), float(promo_discount)))
 
         if loyalty_redeemed_lprog:
             cursor.execute("""
                 INSERT INTO loyalty_transactions (cid, trans_id, lprog_id, val_earned, val_redeemed)
                 VALUES (%s, %s, %s, %s, %s)
-            """, (cid, trans_id, loyalty_redeemed_lprog, total_discount, loyalty_discount))
+            """, (cid, trans_id, loyalty_redeemed_lprog, float(total_discount), float(loyalty_discount)))
 
         cursor.execute("""
             INSERT INTO monthly_revenue (bid, year, month, revenue)
             VALUES (%s, YEAR(NOW()), MONTH(NOW()), %s)
             ON DUPLICATE KEY UPDATE revenue = revenue + %s
-        """, (bid, final_amount, final_amount))
+        """, (bid, float(final_amount), float(final_amount)))
 
         if is_product_purchase:
             cursor.execute("DELETE FROM cart WHERE cid=%s AND bid=%s", (cid, bid))
+
+        if appointment_id:
+            cursor.execute("""
+                UPDATE appointments
+                SET status = %s
+                WHERE aid = %s
+            """, ("paid", appointment_id))
 
         conn.commit()
 
         return jsonify({
             "success": True,
-            "original_amount": Decimal(original_amount),
-            "discount": Decimal(total_discount),
-            "final_amount": Decimal(final_amount),
+            "original_amount": float(original_amount),
+            "discount": float(total_discount),
+            "tax": float(tax),
+            "final_amount": float(final_amount),
             "trans_id": trans_id
         }), 200
 
@@ -371,11 +402,15 @@ def get_discounts():
     cid = get_cid()
     bid = request.args.get("bid")
     is_product_purchase = request.args.get("is_product_purchase", "false").lower() == "true"
+    aid = request.args.get("aid")
 
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
     try:
+        def to_decimal(val) -> Decimal:
+            return Decimal(str(val or 0))
+
         # Checkout subtotal from products
         if is_product_purchase:
             cursor.execute("""
@@ -390,25 +425,55 @@ def get_discounts():
             if not cart_items:
                 return jsonify({"error": "Cart is empty"}), 400
 
-            original_amount = sum(item["amount"] * item["price"] for item in cart_items)
-            sing_disc = cart_items[0]["price"]
+            original_amount = sum(to_decimal(item["amount"]) * to_decimal(item["price"]) for item in cart_items)
+            sing_disc = to_decimal(cart_items[0]["price"])
 
         else:
             # Checkout subtotal from appointments
-            cursor.execute("""
-                SELECT a.aid, s.price
-                FROM appointments a
-                JOIN services s ON s.sid=a.sid
-                WHERE a.cid = %s AND a.bid = %s AND a.status = 'pending_payment'
-                ORDER BY a.created_at DESC LIMIT 1
-            """, (cid, bid))
+            if aid:
+                cursor.execute("""
+                    SELECT a.aid, a.bid, s.price
+                    FROM appointments a
+                    JOIN services s ON s.sid = a.sid
+                    WHERE a.cid = %s AND a.aid = %s
+                """, (cid, aid))
+            else:
+                cursor.execute("""
+                    SELECT a.aid, a.bid, s.price
+                    FROM appointments a
+                    JOIN services s ON s.sid=a.sid
+                    WHERE a.cid = %s AND a.bid = %s
+                    ORDER BY a.created_at DESC LIMIT 1
+                """, (cid, bid))
             appt = cursor.fetchone()
 
             if not appt:
                 return jsonify({"error": "No appointment found"}), 400
 
-            original_amount = appt["price"]
-            sing_disc = appt["price"]
+            bid = bid or appt["bid"]
+            price = to_decimal(appt["price"])
+
+            cursor.execute("""
+                SELECT COALESCE(SUM(amount), 0) AS paid_amount
+                FROM transactions
+                WHERE aid=%s AND payment_method_id IS NOT NULL
+            """, (appt["aid"],))
+            paid_row = cursor.fetchone() or {}
+            already_paid = to_decimal(paid_row.get("paid_amount", 0))
+
+            original_amount = price - already_paid
+            if original_amount <= Decimal("0"):
+                return jsonify({
+                    "status": "success",
+                    "subtotal": 0,
+                    "tax": 0,
+                    "discount": 0,
+                    "total": 0,
+                    "promotions": [],
+                    "loyalty_progs": []
+                })
+
+            sing_disc = original_amount
 
         cursor.execute("""
             SELECT p.promo_id, p.lprog_id, p.title, p.description, l.pts_value,
@@ -430,29 +495,30 @@ def get_discounts():
         """, (bid,))
         promotions = cursor.fetchall()
 
-        promo_discount = 0
+        promo_discount = Decimal("0")
         promos = []
 
         for p in promotions:
+            reward_val = to_decimal(p["rwd_value"])
             if p["is_appt"]:
-                reward = round(Decimal(p["rwd_value"]) * Decimal(sing_disc), 2)
-                promos.append({"promo_id": p["promo_id"], "title": p["title"], "description": p["description"], "reward_type": "appointment", "threshold": 0, "reward": p["rwd_value"], "rwd_value": reward})
+                reward = (reward_val * sing_disc).quantize(Decimal("0.01"))
+                promos.append({"promo_id": p["promo_id"], "title": p["title"], "description": p["description"], "reward_type": "appointment", "threshold": 0, "reward": float(p["rwd_value"]), "rwd_value": float(reward)})
 
             if p["is_product"]:
-                reward = round(Decimal(p["rwd_value"]) * Decimal(sing_disc), 2)
-                promos.append({"promo_id": p["promo_id"], "title": p["title"], "description": p["description"], "reward_type": "product", "threshold": 0, "reward": p["rwd_value"], "rwd_value": reward})
+                reward = (reward_val * sing_disc).quantize(Decimal("0.01"))
+                promos.append({"promo_id": p["promo_id"], "title": p["title"], "description": p["description"], "reward_type": "product", "threshold": 0, "reward": float(p["rwd_value"]), "rwd_value": float(reward)})
 
             if p["is_price"]:
-                reward = round(Decimal(p["rwd_value"]), 2)
-                promos.append({"promo_id": p["promo_id"], "title": p["title"], "description": p["description"], "reward_type": "price", "threshold": 0, "reward": p["rwd_value"], "rwd_value": reward})
+                reward = reward_val.quantize(Decimal("0.01"))
+                promos.append({"promo_id": p["promo_id"], "title": p["title"], "description": p["description"], "reward_type": "price", "threshold": 0, "reward": float(p["rwd_value"]), "rwd_value": float(reward)})
 
             if p["is_points"]:
-                reward = round(Decimal(p["rwd_value"]) * Decimal(p["pts_value"]), 2)
-                promos.append({"promo_id": p["promo_id"], "title": p["title"], "description": p["description"], "reward_type": "points", "threshold": 0, "reward": p["rwd_value"], "rwd_value": reward})
+                reward = (reward_val * to_decimal(p["pts_value"])).quantize(Decimal("0.01"))
+                promos.append({"promo_id": p["promo_id"], "title": p["title"], "description": p["description"], "reward_type": "points", "threshold": 0, "reward": float(p["rwd_value"]), "rwd_value": float(reward)})
 
             if p["is_discount"]:
-                reward = round(Decimal(p["rwd_value"]) * Decimal(.01) * Decimal(original_amount), 2)
-                promos.append({"promo_id": p["promo_id"], "title": p["title"], "description": p["description"], "reward_type": "discount", "threshold": 0, "reward": p["rwd_value"], "rwd_value": reward})
+                reward = (reward_val * Decimal("0.01") * original_amount).quantize(Decimal("0.01"))
+                promos.append({"promo_id": p["promo_id"], "title": p["title"], "description": p["description"], "reward_type": "discount", "threshold": 0, "reward": float(p["rwd_value"]), "rwd_value": float(reward)})
 
             promo_discount += reward
 
@@ -468,7 +534,7 @@ def get_discounts():
         """, (cid, bid))
         reward_rows = cursor.fetchall()
 
-        loyalty_discount = 0
+        loyalty_discount = Decimal("0")
         progs = []
         thresh_met = []
 
@@ -485,43 +551,46 @@ def get_discounts():
         reward = 0
 
         for r in thresh_met:
+            reward_val = to_decimal(r["rwd_value"])
             # appointment reward
             if not is_product_purchase and r["is_appt"] and (r["threshold"] > 0):
-                reward = round(Decimal(r["rwd_value"]) * Decimal(sing_disc), 2)
-                progs.append({"rwd_id": r["rwd_id"], "description": r["description"], "threshold": r["threshold"], "reward_type": "appointment", "rwd_value": r["rwd_value"], "rwd_value": reward})
+                reward = (reward_val * sing_disc).quantize(Decimal("0.01"))
+                progs.append({"rwd_id": r["rwd_id"], "description": r["description"], "threshold": r["threshold"], "reward_type": "appointment", "reward": float(r["rwd_value"]), "rwd_value": float(reward)})
 
             # product reward
             if is_product_purchase and r["is_product"] and (r["threshold"] > 0):
-                reward = round(Decimal(r["rwd_value"]) * Decimal(sing_disc), 2)
-                progs.append({"rwd_id": r["rwd_id"], "description": r["description"], "threshold": r["threshold"], "reward_type": "product", "rwd_value": r["rwd_value"], "rwd_value": reward})
+                reward = (reward_val * sing_disc).quantize(Decimal("0.01"))
+                progs.append({"rwd_id": r["rwd_id"], "description": r["description"], "threshold": r["threshold"], "reward_type": "product", "reward": float(r["rwd_value"]), "rwd_value": float(reward)})
 
             # price reward
             if r["is_price"] and (r["threshold"] > 0):
-                reward = round(Decimal(r["rwd_value"]), 2)
-                progs.append({"rwd_id": r["rwd_id"], "description": r["description"], "threshold": r["threshold"], "reward_type": "price", "rwd_value": r["rwd_value"], "rwd_value": reward})
+                reward = reward_val.quantize(Decimal("0.01"))
+                progs.append({"rwd_id": r["rwd_id"], "description": r["description"], "threshold": r["threshold"], "reward_type": "price", "reward": float(r["rwd_value"]), "rwd_value": float(reward)})
 
             # discount reward
             if r["is_discount"] and (r["threshold"] > 0):
-                reward = round(Decimal(r["rwd_value"]) * Decimal(.01) * Decimal(original_amount), 2)
-                progs.append({"rwd_id": r["rwd_id"], "description": r["description"], "threshold": r["threshold"], "reward_type": "discount", "rwd_value": r["rwd_value"], "rwd_value": reward})
+                reward = (reward_val * Decimal("0.01") * original_amount).quantize(Decimal("0.01"))
+                progs.append({"rwd_id": r["rwd_id"], "description": r["description"], "threshold": r["threshold"], "reward_type": "discount", "reward": float(r["rwd_value"]), "rwd_value": float(reward)})
             
             # points reward
             if r["is_points"] and (r["threshold"] > 0):
-                reward = round(Decimal(r["rwd_value"]) * Decimal(r["pts_value"]), 2)
-                progs.append({"rwd_id": r["rwd_id"], "description": r["description"], "threshold": r["threshold"], "reward_type": "points", "rwd_value": r["rwd_value"], "rwd_value": reward})
+                reward = (reward_val * to_decimal(r["pts_value"])).quantize(Decimal("0.01"))
+                progs.append({"rwd_id": r["rwd_id"], "description": r["description"], "threshold": r["threshold"], "reward_type": "points", "reward": float(r["rwd_value"]), "rwd_value": float(reward)})
             
             loyalty_discount += reward
 
-        tax = round(original_amount * TAX_RATE, 2)
-        total_discount = promo_discount + loyalty_discount
-        final_amount = max(0, round(original_amount + tax - total_discount, 2))
+        tax = (original_amount * TAX_RATE).quantize(Decimal("0.01"))
+        total_discount = (promo_discount + loyalty_discount).quantize(Decimal("0.01"))
+        final_amount = (original_amount + tax - total_discount).quantize(Decimal("0.01"))
+        if final_amount < Decimal("0"):
+            final_amount = Decimal("0.00")
 
         return jsonify({
             "status": "success",
-            "subtotal": original_amount,
-            "tax": tax,
-            "discount": total_discount,
-            "total": final_amount,
+            "subtotal": float(original_amount),
+            "tax": float(tax),
+            "discount": float(total_discount),
+            "total": float(final_amount),
             "promotions": promos,
             "loyalty_progs": progs
         })
