@@ -8,23 +8,25 @@ deposit = Blueprint("deposit", __name__, url_prefix="/deposit")
 @deposit.route('/appointment', methods=['POST'])
 @login_required
 def appointment_deposit():
-    data = request.get_json()
-    aid = data['aid'] if data['aid'] else None
-    payment_id = data['payment_id'] if data['payment_id'] else None
+    payload = request.get_json() or {}
+    aid = payload.get('aid')
+    payment_id = payload.get('payment_id')
+
     if not aid or not payment_id:
-        print("Missing parameters")
+        return jsonify({"status": "failure", "message": "Missing parameters"}), 400
+
+    try:
+        if check_role() != 'customer':
+            return jsonify({
+                "status": "failure",
+                "message": "User is not a customer"
+            }), 401
+        cid = get_curr_cid()
+    except ValueError as exc:
         return jsonify({
-            "status":"success",
-            "message":"Missing parameters"
-        }), 400
-    uid = current_user.id
-    if check_role(uid) != 'customer':
-        print("Wrong account type")
-        return jsonify({
-            "status":"failure",
-            "message":"User is not a customer"
+            "status": "failure",
+            "message": str(exc)
         }), 401
-    cid = get_curr_cid()
 
     conn = None
     cursor = None
@@ -33,8 +35,7 @@ def appointment_deposit():
         cursor = conn.cursor(dictionary=True)
         cursor.execute("select cid from appointments where aid = %s;", [aid])
         result = cursor.fetchone()
-        appt_cid = result['cid']
-        if cid != appt_cid:
+        if not result or cid != result.get('cid'):
             return jsonify({
                 "status":"failure",
                 "message":"customer did not make this appointment"
@@ -48,22 +49,25 @@ def appointment_deposit():
         """
         cursor.execute(query_business_deposit, [aid])
         result = cursor.fetchone()
-        deposit_rate = result['deposit_rate']
-        price = result['price']
-        bid = result['bid']
-        deposit = price * deposit_rate
+        if not result:
+            return jsonify({"status": "failure", "message": "Appointment not found"}), 404
+
+        deposit_rate = float(result.get('deposit_rate') or 0)
+        price = float(result.get('price') or 0)
+        bid = result.get('bid')
+        deposit_amount = round(price * deposit_rate, 2)
         insert_transaction_deposit = """
             insert into transactions (cid, bid, aid, amount, payment_method_id)
             values (%s, %s, %s, %s, %s);
         """
-        param = [cid, bid, aid, deposit, payment_id]
+        param = [cid, bid, aid, deposit_amount, payment_id]
         cursor.execute(insert_transaction_deposit, param)
         trans_id = cursor.lastrowid
         conn.commit()
         return jsonify({
             "status":"success",
             "message":"payment deposited for appointment",
-            "deposit": deposit,
+            "deposit": deposit_amount,
             "transaction ID": trans_id
         }), 200
         
@@ -134,7 +138,7 @@ def insert_payment(uid):
     if not payment_type or not card_number:
         print("Missing parameters")
         return jsonify({
-            "status":"success",
+            "status":"failure",
             "message":"Missing parameters"
         }), 400
     
