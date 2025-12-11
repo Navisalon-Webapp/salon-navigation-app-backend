@@ -1,7 +1,8 @@
-from flask import Flask
+from flask import Flask, jsonify
 import os
 from dotenv import load_dotenv
 from flask_cors import CORS
+from flask_swagger_ui import get_swaggerui_blueprint
 # import atexit
 from src.extensions import mail
 from src.Auth.signup import signup
@@ -53,6 +54,145 @@ from src.Salon.appointments import business_appointments
 load_dotenv()
 
 app = Flask(__name__)
+
+SWAGGER_URL = "/docs"
+API_SPEC_URL = "/swagger.json"
+
+ADDITIONAL_ENDPOINT_DETAILS = {
+    "signin.getSignin": {
+        "post": {
+            "consumes": ["application/json"],
+            "parameters": [
+                {
+                    "in": "body",
+                    "name": "credentials",
+                    "required": True,
+                    "schema": {
+                        "type": "object",
+                        "required": ["email", "password"],
+                        "properties": {
+                            "email": {
+                                "type": "string",
+                                "format": "email",
+                            },
+                            "password": {
+                                "type": "string",
+                            },
+                        },
+                    },
+                }
+            ],
+            "responses": {
+                "200": {
+                    "description": "Signed in successfully.",
+                },
+                "400": {
+                    "description": "Missing credentials or validation error.",
+                },
+                "401": {
+                    "description": "Authentication failed.",
+                },
+            },
+        }
+    },
+    "signin.reset_password_email": {
+        "post": {
+            "consumes": ["application/json"],
+            "parameters": [
+                {
+                    "in": "body",
+                    "name": "request",
+                    "required": True,
+                    "schema": {
+                        "type": "object",
+                        "required": ["email"],
+                        "properties": {
+                            "email": {
+                                "type": "string",
+                                "format": "email",
+                            },
+                        },
+                    },
+                }
+            ],
+        }
+    },
+    "signin.reset_password": {
+        "post": {
+            "consumes": ["application/json"],
+            "parameters": [
+                {
+                    "in": "body",
+                    "name": "request",
+                    "required": True,
+                    "schema": {
+                        "type": "object",
+                        "required": ["uid", "password", "confirmPassword"],
+                        "properties": {
+                            "uid": {"type": "string"},
+                            "password": {"type": "string"},
+                            "confirmPassword": {"type": "string"},
+                        },
+                    },
+                }
+            ],
+        }
+    },
+}
+
+
+def generate_swagger_spec(flask_app: Flask) -> dict:
+    paths = {}
+    tag_set = set()
+
+    for rule in flask_app.url_map.iter_rules():
+        if rule.endpoint == "static":
+            continue
+        if rule.rule == API_SPEC_URL or rule.rule.startswith(SWAGGER_URL):
+            continue
+
+        available_methods = sorted(rule.methods - {"HEAD", "OPTIONS"})
+        if not available_methods:
+            continue
+
+        endpoint_name = rule.endpoint
+        tag_name = endpoint_name.split(".")[0] if "." in endpoint_name else "default"
+        tag_set.add(tag_name)
+
+        methods = {}
+        for method in available_methods:
+            method_name = method.lower()
+            method_spec = {
+                "tags": [tag_name],
+                "summary": endpoint_name,
+                "responses": {
+                    "200": {"description": "Success"},
+                },
+            }
+
+            overrides = ADDITIONAL_ENDPOINT_DETAILS.get(endpoint_name, {}).get(method_name)
+            if overrides:
+                merged = dict(method_spec)
+                merged.update({k: v for k, v in overrides.items() if k != "parameters"})
+                if "parameters" in overrides:
+                    merged["parameters"] = overrides["parameters"]
+                method_spec = merged
+
+            methods[method_name] = method_spec
+
+        paths[str(rule.rule)] = methods
+
+    return {
+        "swagger": "2.0",
+        "info": {
+            "title": "Salon Navigation API",
+            "description": "Automatically generated documentation for the Salon Navigation backend.",
+            "version": "1.0.0",
+        },
+        "basePath": "/",
+        "tags": [{"name": tag} for tag in sorted(tag_set)],
+        "paths": paths,
+    }
 
 app.secret_key = "dev-change-me"
 login_manager.init_app(app)
@@ -125,6 +265,18 @@ app.register_blueprint(saved_favorites)
 app.register_blueprint(profile)
 app.register_blueprint(deposit_rate)
 app.register_blueprint(business_appointments)
+
+swaggerui_blueprint = get_swaggerui_blueprint(
+    SWAGGER_URL,
+    API_SPEC_URL,
+    config={"app_name": "Salon Navigation API"},
+)
+app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
+
+
+@app.route(API_SPEC_URL)
+def swagger_spec():
+    return jsonify(generate_swagger_spec(app))
 
 app.config['SECRET_KEY']=os.getenv('SECRET_KEY')
 
