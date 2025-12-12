@@ -253,6 +253,7 @@ def insert_Admin(uid):
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         cursor.execute("INSERT INTO users_roles (uid, rid) VALUES (%s, %s);",[uid,4])
+        cursor.execute("INSERT INTO admin (uid) VALUES (%s);", [uid])
         conn.commit()
     except mysql.connector.Error as e:
         print(f"Error {e}")
@@ -439,6 +440,30 @@ def check_business_approval(uid):
         cursor = conn.cursor(dictionary=True, buffered=True)
         cursor.execute("""
             SELECT status FROM business WHERE uid = %s
+        """, (uid,))
+        result = cursor.fetchone()
+        return result['status'] if result else False
+    except mysql.connector.Error as e:
+        print(f"Database Error {e}")
+        return False
+    except Exception as e:
+        print(f"Error {e}")
+        return False
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+def check_admin_approval(uid):
+    """Check if a business account has been approved by admin"""
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True, buffered=True)
+        cursor.execute("""
+            SELECT status FROM admin WHERE uid = %s
         """, (uid,))
         result = cursor.fetchone()
         return result['status'] if result else False
