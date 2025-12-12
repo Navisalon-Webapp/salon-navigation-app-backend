@@ -1,8 +1,9 @@
-from flask import request, jsonify, Blueprint
+from flask import jsonify, Blueprint
 import mysql.connector
 from dotenv import load_dotenv
 import os
 from flask_login import current_user, login_required
+from typing import Optional
 
 
 load_dotenv()
@@ -80,30 +81,31 @@ def view_loyalty_points():
             return jsonify({"message": "Could not retrieve customer ID."}), 500
         
         cursor = db.cursor(dictionary=True, buffered=True)
-
-        
         query = """
-        select b.bid,
-               b.name,
-               clp.pts_balance as points_balance,
-               lp.lprog_id,
-               lp.threshold,
-               lp.appts_thresh,
-               lp.pdct_thresh,
-               lp.points_thresh,
-               lp.price_thresh,
-               r.is_appt,
-               r.is_product,
-               r.is_price,
-               r.is_points,
-               r.is_discount,
-               r.rwd_value
-        from customer_loyalty_points clp
-        join business b on clp.bid = b.bid
-        left join loyalty_programs lp on lp.bid = clp.bid
-        left join rewards r on r.lprog_id = lp.lprog_id and r.bid = clp.bid
-        where clp.cid = %s
-        order by b.name, lp.lprog_id desc;
+            select b.bid,
+                   b.name,
+                   clp.pts_balance as points_balance,
+                   lp.lprog_id,
+                   lp.threshold,
+                   lp.appts_thresh,
+                   lp.pdct_thresh,
+                   lp.points_thresh,
+                   lp.price_thresh,
+                   r.is_appt,
+                   r.is_product,
+                   r.is_price,
+                   r.is_points,
+                   r.is_discount,
+                   r.rwd_value,
+                   clp.appt_complete,
+                   clp.prod_purchased,
+                   clp.amount_spent
+            from customer_loyalty_points clp
+            join business b on clp.bid = b.bid
+            left join loyalty_programs lp on lp.bid = clp.bid
+            left join rewards r on r.lprog_id = lp.lprog_id and r.bid = clp.bid
+            where clp.cid = %s
+            order by b.name, lp.lprog_id desc;
         """
         cursor.execute(query, (customer_id,))
         results = cursor.fetchall()
@@ -124,7 +126,7 @@ def view_loyalty_points():
             if bid in seen_bids:
                 continue
             seen_bids.add(bid)
-            balance = float(row.get("points_balance") or 0)
+            points_balance = float(row.get("points_balance") or 0)
             threshold = row.get("threshold")
             program_type = next(
                 (
@@ -141,24 +143,49 @@ def view_loyalty_points():
             )
             active_reward = next((label for key, label in reward_flags if row.get(key)), None)
             reward_value = row.get("rwd_value")
-            if program_type == "appts_thresh" and threshold is not None:
-                try:
-                    goal_value = float(threshold)
-                except (TypeError, ValueError):
-                    goal_value = 0.0
-                display_balance = min(balance, goal_value if goal_value > 0 else balance)
-                balance = float(int(round(display_balance)))
-                threshold = goal_value
+
+            progress_value = points_balance
+            goal_value: Optional[float]
+            try:
+                goal_value = float(threshold) if threshold is not None else None
+            except (TypeError, ValueError):
+                goal_value = None
+
+            if program_type == "appts_thresh":
+                progress_value = float(row.get("appt_complete") or 0)
+            elif program_type == "pdct_thresh":
+                progress_value = float(row.get("prod_purchased") or 0)
+            elif program_type == "price_thresh":
+                progress_value = float(row.get("amount_spent") or 0)
+            elif program_type == "points_thresh":
+                progress_value = points_balance
+
+            if goal_value is None:
+                if program_type == "points_thresh":
+                    goal_value = max(progress_value, 100.0)
+                else:
+                    goal_value = 1.0
+
+            progress_value = max(progress_value, 0.0)
+            goal_value = max(goal_value, 0.0)
+            if goal_value and goal_value > 0:
+                progress_value = min(progress_value, goal_value)
+
+            rounded_points = int(round(points_balance))
+            rounded_progress = int(round(progress_value))
+            rounded_goal = int(round(goal_value))
+
             loyalty_points.append(
                 {
                     "id": f"s{bid}",
                     "bid": bid,
                     "name": name,
-                    "points": balance,
-                    "goal": float(threshold) if threshold is not None else 100,
+                    "points": rounded_points,
+                    "progress": rounded_progress,
+                    "goal": rounded_goal,
                     "programType": program_type,
                     "rewardType": active_reward,
-                    "rewardValue": float(reward_value) if reward_value is not None else None,
+                    "rewardValue": int(round(float(reward_value))) if reward_value is not None else None,
                     "address": "",
                 }
             )

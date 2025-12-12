@@ -165,10 +165,13 @@ def award_points_for_visit(
     _ensure_tables(conn)
     program_details = _fetch_program_details(conn, bid) or {}
     program_type = program_details.get("program_type")
+    reward_type = program_details.get("reward_type")
+    reward_value = _as_decimal(program_details.get("reward_value")) if program_details.get("reward_value") is not None else Decimal("0")
+    threshold = _as_decimal(program_details.get("threshold")) if program_details.get("threshold") is not None else Decimal("0")
+    print("[award] program_details:", program_details)
+
     if explicit_points is not None:
-        awarded_points = max(int(explicit_points), 0)
-    elif program_type == "appts_thresh":
-        awarded_points = 1
+        base_points = max(int(explicit_points), 0)
     elif program_type == "pdct_thresh":
         units = 1
         if quantity is not None:
@@ -178,44 +181,124 @@ def award_points_for_visit(
                 units = 1
         if units <= 0:
             units = 1
-        awarded_points = units
+        base_points = units
+    elif amount is not None:
+        base_points = calculate_points(amount, None)
     else:
-        awarded_points = calculate_points(amount, None)
-    if awarded_points <= 0:
-        balance = get_balance(conn, cid, bid)
-        return {"awarded": False, "points": 0, "balance": float(balance)}
+        base_points = 1
 
-    cursor = conn.cursor()
+    if reward_type == "is_points" and program_type in {"appts_thresh", "pdct_thresh", "price_thresh"}:
+        base_points = 0
+
+    if base_points < 0:
+        base_points = 0
+
+    appt_increment = Decimal("1") if aid is not None else Decimal("0")
+    prod_increment = Decimal("0")
+    if quantity is not None:
+        try:
+            prod_increment = Decimal(str(max(int(quantity), 0)))
+        except (TypeError, ValueError):
+            prod_increment = Decimal("0")
+    amount_increment = _as_decimal(amount) if amount is not None else Decimal("0")
+
+    cursor = conn.cursor(dictionary=True)
     try:
         cursor.execute(
+            """
+            SELECT pts_balance, appt_complete, prod_purchased, amount_spent
+            FROM customer_loyalty_points
+            WHERE cid = %s AND bid = %s
+            FOR UPDATE
+            """,
+            (cid, bid),
+        )
+        row = cursor.fetchone()
+        if not row:
+            cursor.execute(
+                """
+                INSERT INTO customer_loyalty_points (cid, bid, pts_balance, prod_purchased, appt_complete, amount_spent)
+                VALUES (%s, %s, 0, 0, 0, 0)
+                """,
+                (cid, bid),
+            )
+            row = {"pts_balance": Decimal("0"), "appt_complete": Decimal("0"), "prod_purchased": Decimal("0"), "amount_spent": Decimal("0")}
+
+        current_appts = _as_decimal(row.get("appt_complete"))
+        current_products = _as_decimal(row.get("prod_purchased"))
+        current_amount = _as_decimal(row.get("amount_spent"))
+
+        new_appts = current_appts + appt_increment
+        new_products = current_products + prod_increment
+        new_amount = current_amount + amount_increment
+
+        bonus_points = Decimal("0")
+        completions = 0
+
+        if program_type == "appts_thresh" and threshold > Decimal("0"):
+            completions = int(new_appts // threshold)
+            if completions > 0:
+                new_appts = new_appts - (threshold * completions)
+        elif program_type == "pdct_thresh" and threshold > Decimal("0"):
+            completions = int(new_products // threshold)
+            if completions > 0:
+                new_products = new_products - (threshold * completions)
+        elif program_type == "price_thresh" and threshold > Decimal("0"):
+            completions = int(new_amount // threshold)
+            if completions > 0:
+                new_amount = new_amount - (threshold * completions)
+
+        if completions > 0 and reward_type == "is_points" and reward_value > Decimal("0"):
+            bonus_points = (reward_value * completions).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+
+        total_points = Decimal(str(base_points)) + bonus_points
+        print("[award] base:", base_points, "bonus:", bonus_points)
+        if total_points <= Decimal("0"):
+            cursor.close()
+            balance = get_balance(conn, cid, bid)
+            return {"awarded": False, "points": 0, "balance": float(balance)}
+
+        cursor.execute(
+            """
+            UPDATE customer_loyalty_points
+            SET pts_balance = pts_balance + %s,
+                appt_complete = %s,
+                prod_purchased = %s,
+                amount_spent = %s
+            WHERE cid = %s AND bid = %s
+            """,
+            (
+                float(total_points),
+                float(new_appts),
+                float(new_products),
+                float(new_amount),
+                cid,
+                bid,
+            ),
+        )
+
+        event_cursor = conn.cursor()
+        event_cursor.execute(
             """
             INSERT INTO loyalty_point_events (aid, cid, bid, points, source)
             VALUES (%s, %s, %s, %s, %s)
             """,
-            (aid, cid, bid, awarded_points, source),
+            (aid, cid, bid, int(total_points), source),
         )
-        cursor.execute(
-            """
-            INSERT INTO customer_loyalty_points (cid, bid, pts_balance)
-            VALUES (%s, %s, %s)
-            ON DUPLICATE KEY UPDATE pts_balance = pts_balance + VALUES(pts_balance)
-            """,
-            (cid, bid, awarded_points),
-        )
+        event_cursor.close()
         conn.commit()
-    except mysql.connector.IntegrityError:
-        conn.rollback()
         balance = get_balance(conn, cid, bid)
         cursor.close()
+        return {"awarded": True, "points": int(total_points), "balance": float(balance)}
+    except mysql.connector.IntegrityError:
+        conn.rollback()
+        cursor.close()
+        balance = get_balance(conn, cid, bid)
         return {"awarded": False, "points": 0, "balance": float(balance)}
     except Exception:
         conn.rollback()
         cursor.close()
         raise
-    else:
-        balance = get_balance(conn, cid, bid)
-        cursor.close()
-        return {"awarded": True, "points": awarded_points, "balance": float(balance)}
 
 
 def redeem_points(
@@ -224,6 +307,7 @@ def redeem_points(
     cid: int,
     bid: int,
     points: int,
+    auto_commit: bool = True,
 ) -> Dict[str, object]:
     if points <= 0:
         raise ValueError("points to redeem must be positive")
@@ -231,19 +315,22 @@ def redeem_points(
     _ensure_tables(conn)
     cursor = conn.cursor()
     try:
-        conn.start_transaction()
+        if auto_commit:
+            conn.start_transaction()
         cursor.execute(
             "SELECT pts_balance FROM customer_loyalty_points WHERE cid = %s AND bid = %s FOR UPDATE",
             (cid, bid),
         )
         row = cursor.fetchone()
         if not row:
-            conn.rollback()
+            if auto_commit:
+                conn.rollback()
             raise ValueError("no loyalty balance for this salon")
 
         balance = _as_decimal(row[0])
         if balance < points:
-            conn.rollback()
+            if auto_commit:
+                conn.rollback()
             raise ValueError("insufficient loyalty points")
 
         new_balance = balance - Decimal(points)
@@ -261,10 +348,12 @@ def redeem_points(
             """,
             (cid, bid, points, float(discount_value)),
         )
-        conn.commit()
+        if auto_commit:
+            conn.commit()
         return {"balance": float(new_balance), "discount": float(discount_value)}
     except Exception:
-        conn.rollback()
+        if auto_commit:
+            conn.rollback()
         raise
     finally:
         cursor.close()
