@@ -238,6 +238,7 @@ def employee_reschedule():
     if conn is None:
         raise ValueError("Database connection failed")
     cursor = None
+    cid = appt_details['cid']
     
     try:
         cursor = conn.cursor(dictionary=True)
@@ -245,12 +246,30 @@ def employee_reschedule():
         row=cursor.fetchone()
         duration=row['duration']
 
-        end_time = start_time + timedelta(duration)
+        end_time = start_time + timedelta(minutes=duration)
 
         start_str=start_time.strftime("%Y-%m-%d %H:%M:%S")
         end_str=end_time.strftime("%Y-%m-%d %H:%M:%S")
 
         cursor.execute("update appointments set start_time=%s, expected_end_time=%s where aid=%s",[start_str, end_str, aid])
+        conn.commit()
+
+        # Remove old scheduled reminder job if exists
+        if scheduler.get_job(f"Appointment:{aid}:{cid}"):
+            scheduler.remove_job(f"Appointment:{aid}:{cid}")
+        
+        # Schedule new reminder email (24 hours before)
+        reminder_time = start_time - timedelta(hours=24)
+        if reminder_time > now_eastern:
+            c_email = get_email(appt_details['c_uid'])
+            msg = Message(subject="Appointment Reminder", body=f"You have an appointment tomorrow at {start_time.strftime('%I:%M %p')}")
+            
+            scheduler.add_job(
+                func=lambda: send_reminder(msg, c_email),
+                trigger='date',
+                run_date=reminder_time,
+                id=f'Appointment:{aid}:{cid}'
+            )
 
         c_name = get_name(appt_details['c_uid'])
         c_email = get_email(appt_details['c_uid'])
