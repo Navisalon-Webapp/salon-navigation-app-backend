@@ -35,7 +35,7 @@ def cancel_appt():
 
     try:
         cid=get_cid_for_aid(cursor, appointment_id)
-        query = "DELETE FROM appointments WHERE aid = %s"
+        query = "UPDATE appointments SET status = 'cancelled' WHERE aid = %s"
         cursor.execute(query, (appointment_id,))
         db.commit()
 
