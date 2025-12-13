@@ -1,4 +1,13 @@
 update_verify_salon = "UPDATE business JOIN users ON business.uid=users.uid SET status=1 WHERE users.uid=%s"
+
+update_verify_admin = "update admin set status = 1 where uid = %s;"
+
+delete_admin = "delete from admin where uid = %s;"
+
+delete_admin_role = "delete from users_roles where uid = %s;"
+
+delete_admin_user = "delete from users where uid = %s;"
+
 delete_reject_salon = "DELETE FROM business WHERE uid=%s"
 
 query_business_retention = """
