@@ -240,7 +240,7 @@ def client_view_appoints():
             JOIN employee e ON a.eid = e.eid
             JOIN services s ON a.sid = s.sid
             JOIN users u ON e.uid = u.uid
-            WHERE a.cid = %s AND a.start_time < NOW()
+            WHERE a.cid = %s AND a.start_time < NOW() AND (a.status IS NULL OR a.status != 'cancelled')
             ORDER BY a.start_time DESC
         """
 
@@ -329,7 +329,7 @@ def client_view_future_appoints():
             JOIN employee e ON a.eid = e.eid
             JOIN services s ON a.sid = s.sid
             JOIN users u ON e.uid = u.uid
-            WHERE a.cid = %s AND a.start_time >= NOW()
+            WHERE a.cid = %s AND a.start_time >= NOW() AND (a.status IS NULL OR a.status != 'cancelled')
             ORDER BY a.start_time ASC
         """
 

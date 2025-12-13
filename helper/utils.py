@@ -191,6 +191,20 @@ def get_name(uid):
             cursor.close()
         if conn:
             conn.close()
+
+def get_uid_for_eid(conn, eid):
+    """return uid for given eid"""
+    cursor = None
+    try:
+        cursor = conn.cursor(dictionary=True, buffered=True)
+        cursor.execute("SELECT uid FROM employee WHERE eid = %s", [eid])
+        result = cursor.fetchone()
+        cursor.close()
+        return result['uid'] if result else None
+    except Exception as e:
+        if cursor:
+            cursor.close()
+        raise e
     
 def get_appointment_details(aid):
     """return cid, customer first name, customer last name, customer email,

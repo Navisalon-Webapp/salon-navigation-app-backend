@@ -187,7 +187,7 @@ def create_appointment():
             conn.close()
         return jsonify({"status": "failure", "message": f"error: {e}"}), 500
     
-@schedule_appt.route('/employee/reschedule', methods=['PUT'])
+@schedule_appt.route('/employee/reschedule', methods=['POST'])
 @login_required
 def employee_reschedule():
     uid =  current_user.id
@@ -300,6 +300,148 @@ def employee_reschedule():
             conn.close()
         if conn:
             conn.close()
+
+@schedule_appt.route('/client/reschedule-appointment', methods=['POST'])
+@login_required
+def client_reschedule():
+    """
+    Client reschedules their own appointment.
+    POST JSON body expects:
+    {
+      "aid": <appointment id> (required),
+      "sid": <service id> (required),
+      "start_time": "<YYYY-MM-DDTHH:MM>" or "<ISO string>" (required),
+      "expected_end_time": "YYYY-MM-DD HH:MM:SS" (optional),
+      "eid": <employee id> (optional),
+      "notes": "optional text"
+    }
+    """
+    uid = current_user.id
+    
+    data = request.get_json() or {}
+    aid = data.get("aid") or data.get("old_aid")
+    sid = data.get("sid")
+    start_time_raw = data.get("start_time")
+    expected_end_time_raw = data.get("expected_end_time")
+    eid = data.get("eid")
+    notes = data.get("notes", "")
+
+    if not aid or not sid or not start_time_raw:
+        return jsonify({"status": "failure", "message": "aid, sid and start_time required"}), 400
+
+    # Get current appointment details
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({"status": "failure", "message": "db connection error"}), 500
+
+    try:
+        cid = get_cid_for_uid(conn, uid)
+        if cid is None:
+            conn.close()
+            return jsonify({"status": "failure", "message": "current user not a customer (no cid)"}), 403
+
+        # Verify the appointment belongs to this customer
+        appt_details = get_appointment_details(aid)
+        if not appt_details or appt_details['cid'] != cid:
+            conn.close()
+            return jsonify({"status": "failure", "message": "appointment not found or not owned by customer"}), 403
+
+        # Parse new start time
+        try:
+            if "T" in start_time_raw and start_time_raw.count(":") >= 1:
+                start_dt = datetime.fromisoformat(start_time_raw)
+            else:
+                start_dt = datetime.strptime(start_time_raw, "%Y-%m-%d %H:%M:%S")
+        except Exception as e:
+            conn.close()
+            return jsonify({"status": "failure", "message": f"invalid start_time: {e}"}), 400
+
+        # Check if the appointment time is in the past
+        eastern = pytz.timezone('US/Eastern')
+        now_eastern = datetime.now(eastern)
+        
+        if start_dt.tzinfo is None:
+            start_dt_eastern = eastern.localize(start_dt)
+        else:
+            start_dt_eastern = start_dt.astimezone(eastern)
+        
+        if start_dt_eastern < now_eastern - timedelta(minutes=5):
+            conn.close()
+            return jsonify({"status": "failure", "message": "Cannot reschedule appointments to the past"}), 400
+
+        # Calculate end time
+        if expected_end_time_raw:
+            expected_dt = datetime.fromisoformat(expected_end_time_raw) if "T" in expected_end_time_raw else datetime.strptime(expected_end_time_raw, "%Y-%m-%d %H:%M:%S")
+        else:
+            cur = conn.cursor(dictionary=True)
+            cur.execute("SELECT duration FROM services WHERE sid = %s", (sid,))
+            service_row = cur.fetchone()
+            cur.close()
+            if service_row:
+                expected_dt = start_dt + timedelta(minutes=service_row['duration'])
+            else:
+                expected_dt = start_dt + timedelta(minutes=60)
+
+        start_str = start_dt.strftime("%Y-%m-%d %H:%M:%S")
+        expected_str = expected_dt.strftime("%Y-%m-%d %H:%M:%S")
+
+        cur = conn.cursor(buffered=True)
+        
+        # Update the appointment
+        update_q = """
+            UPDATE appointments 
+            SET start_time = %s, expected_end_time = %s, sid = %s
+        """
+        params = [start_str, expected_str, sid]
+        
+        if eid:
+            update_q += ", eid = %s"
+            params.append(eid)
+        
+        update_q += " WHERE aid = %s"
+        params.append(aid)
+        
+        cur.execute(update_q, params)
+        conn.commit()
+
+        # Update notes if provided
+        if notes.strip():
+            author_uid = uid
+            author_role = "client"
+            note_q = """
+                INSERT INTO appointment_notes (aid, author_uid, author_role, note_text)
+                VALUES (%s, %s, %s, %s)
+            """
+            cur.execute(note_q, (aid, author_uid, author_role, f"Reschedule note: {notes}"))
+            conn.commit()
+
+        cur.close()
+
+        # Remove old scheduled reminder job if exists
+        try:
+            if scheduler.get_job(f"Appointment:{aid}:{cid}"):
+                scheduler.remove_job(f"Appointment:{aid}:{cid}")
+        except:
+            pass  # Ignore scheduler errors
+
+        conn.close()
+
+        return jsonify({
+            "status": "success",
+            "message": "Appointment rescheduled successfully",
+            "appointment_id": aid
+        }), 200
+
+    except mysql.connector.Error as err:
+        if conn:
+            conn.rollback()
+            conn.close()
+        return jsonify({"status": "failure", "message": f"db error: {err}"}), 500
+    except Exception as e:
+        if conn:
+            conn.rollback()
+            conn.close()
+        return jsonify({"status": "failure", "message": f"error: {e}"}), 500
 
 @schedule_appt.route('/employee/send-notification/<int:aid>', methods=['POST'])
 @login_required
