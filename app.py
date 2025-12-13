@@ -48,6 +48,7 @@ from src.Clients.save_favorites import saved_favorites
 from src.Worker.profile import profile
 from src.Salon.deposit import deposit_rate
 from src.Salon.appointments import business_appointments
+from src.Admin.verifyadmin import verifyadmin
 
 
 
@@ -265,6 +266,7 @@ app.register_blueprint(saved_favorites)
 app.register_blueprint(profile)
 app.register_blueprint(deposit_rate)
 app.register_blueprint(business_appointments)
+app.register_blueprint(verifyadmin)
 
 swaggerui_blueprint = get_swaggerui_blueprint(
     SWAGGER_URL,

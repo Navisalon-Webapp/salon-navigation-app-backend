@@ -58,6 +58,15 @@ def getSignin():
                     "status": "failure",
                     "message": "Your employee account is pending salon approval. You will be notified once approved."
                 }), 403
+        elif user_info['name'] == 'admin':
+            approval_status = check_admin_approval(uid['uid'])
+            if not approval_status:
+                return jsonify({
+                    "status": "failure",
+                    "message": "Your admin account is pending admin approval. You will be notified once approved."
+                }), 403
+            
+            
         
         user = User(
             id = user_info['uid'],
