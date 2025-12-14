@@ -83,8 +83,8 @@ def pending_admins():
         cursor = conn.cursor(dictionary=True)
         cursor.execute("""
             SELECT a.uid AS id, concat(u.first_name, ' ', u.last_name) as name
-            FROM admin_app.admin a
-            JOIN admin_app.users u ON a.uid  = u.uid
+            FROM admin a
+            JOIN users u ON a.uid  = u.uid
             WHERE a.status = 0;
         """)
         rows = cursor.fetchall()
